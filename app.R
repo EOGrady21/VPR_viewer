@@ -36,7 +36,7 @@ var myHeight = $(window).height();
 Shiny.onInputChange('shiny_height',myHeight)
 
 });"
-    ),
+    ), 
     
     titlePanel("Plankton Plotter"),
     
@@ -45,7 +45,7 @@ Shiny.onInputChange('shiny_height',myHeight)
             helpText("Input Metadata."),
             fluidRow(
                 column(3, offset = 5,
-                       actionButton('update', label = 'Update'),
+                       actionButton('update', label = 'Update', icon(name = 'refresh', lib = 'glyphicon')),
                 )),
             
             fileInput('ctd_files', label = 'CTD Files', multiple = FALSE, accept = '.dat'),
@@ -66,20 +66,15 @@ Shiny.onInputChange('shiny_height',myHeight)
             # ),
             
             textInput('station', label = 'Station ID', placeholder = 'eg. CAP1-2'),
-            
-            
+
             textInput('event', label = 'Event ID', placeholder = 'eg. 001'),
-            
-            
+
             numericInput('imageVolume', label = 'Image Volume ', value = 108155 ),
-            
-            
+
             numericInput('binSize', label = 'Bin Size', value = 5),
-            
-            
+
             textInput('basepath', label = 'Base Path', placeholder = 'E:/VP_data', value = 'C:/data'), # 'C:/data'
-            
-            
+
             ##OPTIONAL QC PARAMETERS##
             #min and max values of each parameter
             
@@ -94,14 +89,10 @@ Shiny.onInputChange('shiny_height',myHeight)
             
             sliderInput("hr_range", label = h3("Time Range (hr)"), min = 0, 
                         max = 4, value = c(0, 4), step = 0.1)
-            
-            
-            
         ),
         
         
         mainPanel(
-            
             # Output: Tabset w/ plot, summary, and table ----
             tabsetPanel(type = "tabs",
                         tabPanel("Plot", 
@@ -123,8 +114,6 @@ Shiny.onInputChange('shiny_height',myHeight)
                                             downloadButton('save4', label = 'Save')
                                      ),
                                      column(12, plotOutput('plot4')),
-                                     
-                                     
                                  )),
                         tabPanel("Summary", verbatimTextOutput("summary")),
                         tabPanel("Table", DT::dataTableOutput("ctdroi")),
@@ -135,17 +124,13 @@ Shiny.onInputChange('shiny_height',myHeight)
                                  fluidRow(
                                      column( 1, 
                                              imageOutput("image")
-                                             
                                      ),
                                      
                                      column(4, offset = 5, 
                                             imageOutput("image2")
                                      )
-                                     
                                  )
                         )
-                        
-                        
             )
         )
     )
@@ -153,19 +138,16 @@ Shiny.onInputChange('shiny_height',myHeight)
 
 
 server <- function(input, output, session) {
-    
     observe(session$setCurrentTheme(
         if (isTRUE(input$dark_mode)) dark else light
     ))
     
+    
     datasetInput <- reactive({
         
-        
+        req(input$ctd_files)
         
         ctd_fns <- input$ctd_files
-        
-        if (is.null(ctd_fns))
-            return(NULL)
         
         ctd_dat <- vpr_ctd_read(ctd_fns$datapath, station_of_interest = input$station, day = input$day, hour = input$hour)
         
@@ -174,14 +156,11 @@ server <- function(input, output, session) {
         
         roi_files <- list.files(file.path(input$basepath, input$cruise, 'rois', paste0('vpr', input$tow),paste0('d', input$day), paste0('h', input$hour) ))
         roi_num <- substr(roi_files, 5, nchar(roi_files) - 4)
-        
-        
-        
+
         #get roi number that will match ctd time_ms
         rois <- as.numeric(substr(roi_num, 1, 8))
         #format as table to get frequency
         roi_table <- as.data.frame(table(rois))
-        
         
         #subset ctd and roi data where time/roi identifier match
         ctd_sub <- which(ctd_dat$time_ms %in% rois)
@@ -198,11 +177,9 @@ server <- function(input, output, session) {
             dplyr::mutate(., roi = roi_dat_sub) %>%
             dplyr::mutate(., n_roi = roi_table$Freq) #add n_roi (count of rois per second)
         
-        
         #add  time(hr) to combined data frame
         all_dat <- all_dat %>%
             dplyr::mutate(., avg_hr = time_ms/3.6e+06)
-        
         
         all_dat_o <- all_dat #save original data as seperate object for comparison
         all_dat <- all_dat %>% #filter data based on parameter ranges set in step 1
@@ -214,39 +191,28 @@ server <- function(input, output, session) {
             dplyr::filter(., pressure < max(input$pres_range)) #%>%
         #dplyr::filter(., avg_hr > min(input$hr_range)) %>%
         # dplyr::filter(., avg_hr < max(input$hr_range))
-        
-        
     })
     
     
     binnedData <- reactive({
-        
-        
-        
+
         all_dat <- datasetInput()
         
         ctd_roi_oce <- vpr_oce_create(all_dat)
         
-        
         vpr_depth_bin <- bin_cast(ctd_roi_oce = ctd_roi_oce , imageVolume = input$imageVolume, binSize = input$binSize, rev = TRUE)
-        
-        
     })
     
     
     dat_qc <- reactive({
-        
-        
-        
+  
         all_dat <- datasetInput()
         
         all_dat_q <- all_dat %>%
             dplyr::mutate(., avg_hr = avg_hr - min(avg_hr))%>%
             dplyr::filter(., avg_hr < max(input$hr_range)) %>%
             dplyr::filter(., avg_hr > min(input$hr_range))
-        
-        
-        
+
         return(all_dat_q)
     })
     
@@ -256,7 +222,7 @@ server <- function(input, output, session) {
         
         isolate({
             
-            return(dat_qc())
+        return(dat_qc())
         })
         
     })
@@ -320,17 +286,15 @@ server <- function(input, output, session) {
     })
     
     plot_profile <- function(){
+        
         isolate({
-            if (is.null(binnedData()))
-                return(NULL)
-            
+
             vpr_depth_bin <- binnedData()
             
             vpr_sel <- vpr_depth_bin %>%
                 dplyr::filter(., avg_hr < max(input$hr_range)) %>%
                 dplyr::filter(., avg_hr > min(input$hr_range))
-            
-            
+
             vpr_plot_profile(taxa_conc_n = vpr_sel, taxa_to_plot = NULL, plot_conc = TRUE)
             
         })    
@@ -343,8 +307,6 @@ server <- function(input, output, session) {
         plot_profile()
         
     })
-    
-    
     
     output$save1 <- downloadHandler(
         filename = paste0(input$cruise, "_VPR", input$tow, "_d", input$day, "_h", input$hour, "profile_plot.png"), 
@@ -372,20 +334,15 @@ server <- function(input, output, session) {
                 dplyr::filter(., avg_hr < max(input$hr_range)) %>%
                 dplyr::filter(., avg_hr > min(input$hr_range))
             
-            
             #temperature
             #interpolate data
             vpr_int <- akima::interp(x = vpr_depth_bin$avg_hr, y = vpr_depth_bin$depth, z = vpr_depth_bin$conc_m3, duplicate= 'strip')
-            
-            
-            
+
             #plot
             #set consistent x and y limits
             y_limits <- rev(range(vpr_int$y))
-            
-            
-            
             x_limits <- range(input$hr_range)
+            
             if(max(x_limits) > max(vpr_depth_bin$avg_hr)){
                 x_limits[2] <- max(vpr_depth_bin$avg_hr)
             }
@@ -410,8 +367,6 @@ server <- function(input, output, session) {
                                #enlarge bubble size based on concentration
                                symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
                                        fg = "darkgrey", bg = "grey", inches = 0.3, add = T)
-                               
-                               
                            }) 
         })
     }
@@ -449,20 +404,15 @@ server <- function(input, output, session) {
                 dplyr::filter(., avg_hr < max(input$hr_range)) %>%
                 dplyr::filter(., avg_hr > min(input$hr_range))
             
-            
             #temperature
             #interpolate data
             vpr_int <- akima::interp(x = vpr_depth_bin$avg_hr, y = vpr_depth_bin$depth, z = vpr_depth_bin$temperature, duplicate= 'strip')
-            
-            
-            
+
             #plot
             #set consistent x and y limits
             y_limits <- rev(range(vpr_int$y))
-            
-            
-            
             x_limits <- range(input$hr_range)
+            
             if(max(x_limits) > max(vpr_depth_bin$avg_hr)){
                 x_limits[2] <- max(vpr_depth_bin$avg_hr)
             }
@@ -487,8 +437,6 @@ server <- function(input, output, session) {
                                #enlarge bubble size based on concentration
                                symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
                                        fg = "darkgrey", bg = "grey", inches = 0.3, add = T)
-                               
-                               
                            }) 
         })
         
@@ -526,17 +474,13 @@ server <- function(input, output, session) {
             sel_dat <- all_dat %>%
                 dplyr::filter(., avg_hr < max(input$hr_range)) %>%
                 dplyr::filter(., avg_hr > min(input$hr_range))
-            
-            
+
             vpr_int <- akima::interp(x = vpr_depth_bin$avg_hr, y = vpr_depth_bin$depth, z = vpr_depth_bin$salinity, duplicate = 'strip')
-            
-            
+
             #set consistent x and y limits
             y_limits <- rev(range(vpr_int$y))
-            
-            
-            
             x_limits <- range(input$hr_range)
+            
             if(max(x_limits) > max(vpr_depth_bin$avg_hr)){
                 x_limits[2] <- max(vpr_depth_bin$avg_hr)
             }
@@ -561,8 +505,6 @@ server <- function(input, output, session) {
                                #enlarge bubbles based on concentration
                                symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
                                        fg = "darkgrey", bg = "grey", inches = 0.3, add = T)
-                               
-                               
                            }) 
         })
         
@@ -587,8 +529,7 @@ server <- function(input, output, session) {
     )
     
     ##ROI images
-    
-    
+
     shinyDirChoose(input, 'dir',roots = c('C:/' = 'C:/', 'D:/' = 'D:/', 'E:/' = 'E:/', 'F:/' = 'F:/'  )  )
     dir <- reactive(input$dir)
     output$dir <- renderPrint(dir())
@@ -601,8 +542,7 @@ server <- function(input, output, session) {
     
     # files
     output$files <- renderPrint(list.files(path()))
-    
-    
+
     values <- reactiveValues(
         upload_state = NULL
     )
@@ -615,9 +555,7 @@ server <- function(input, output, session) {
         if (is.null(values$upload_state)) {
             
             imgs_path <-  paste0(input$basepath, '/', input$cruise, "/rois/vpr", input$tow,"/d", input$day, "/h", input$hour, "/")
-            
-            
-            
+           
         } else if (values$upload_state == 'uploaded') {
             imgs_path <- path()
             
@@ -637,11 +575,8 @@ server <- function(input, output, session) {
         all_dat <- dat_qc()
         imgss <- list.files(imgs_path(), pattern = '.tif', full.names = TRUE)
         
-        
-        #roi_ids <- vpr_roi(imgss[index()])
         roi_ids <- vpr_roi(imgss)
         roi_ids <- as.numeric(substr(roi_ids, 1, 8))
-        #browser()
         validroi_ind <- which(roi_ids %in% all_dat$roi)
         validroi <- roi_ids[roi_ids %in% all_dat$roi]
         
@@ -650,8 +585,6 @@ server <- function(input, output, session) {
         imgss <- imgss[index()]
         
         roi_id_string <- stringr::str_c(validroi, sep = ',')
-        
-        
         
         image <- image_read(na.omit(imgss))
         
@@ -677,15 +610,11 @@ server <- function(input, output, session) {
         roi_id_string <- stringr::str_c(roi_ids, sep = ',')
         
         roi_ids <- as.numeric(substr(roi_ids, 1, 8))
-        #browser()
         validroi_ind <- which(roi_ids %in% all_dat$roi)
         validroi <- roi_ids[roi_ids %in% all_dat$roi]
         
         imgss <- imgss[validroi_ind]
         imgss <- imgss[index2()]
-        
-        
-        #browser()
         
         image <- image_read(na.omit(imgss))
         
