@@ -107,8 +107,7 @@ Shiny.onInputChange('shiny_height',myHeight)
                         tabPanel("Plot", 
                                  fluidRow(
                                      column(3, offset = 9,
-                                            downloadButton('save1', label = 'Save')
-                                     )
+                                            downloadButton('save1', label = 'Save'))
                                  ),
                                  fluidRow(
                                      column(12, plotOutput("plot")),
