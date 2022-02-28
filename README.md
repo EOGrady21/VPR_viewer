@@ -23,6 +23,20 @@ The Images tab displays an image gallery of ROIs for easy browsing and initial i
 
 ## The Inputs
 The app is able to read in .dat CTD files which are produced by AutoDeck from the raw VPR data. These CTD data files should be distinct for every hour of the VPR deployment. At this time only one 'hour' of data can be displayed at a time.
+
+The expected CTD data columns are as follows:
+
+  - Time (ms)	
+  - Conductivity	
+  - Temperature	
+  - Pressure	
+  - Salinity	
+  - Fluorescence (reference)	
+  - Fluorescence (mv)	
+  - Turbidity (reference)	
+  - Turbidity (mv)	
+  - Altitude
+
 The app is also able to display, in a gallery format, the ROI images output from autodeck. In the Images tab, a user may select the directory of ROI images which will be displayed.
 
 ## The Outputs
