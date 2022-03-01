@@ -17,9 +17,7 @@ The Table tab displays a data table with all the CTD and ROI data, as well as so
 
 The Images tab displays an image gallery of ROIs for easy browsing and initial identification of plankton. Note that these images may also be subset if metadata sliders are used to subset data. 
 
-![Web capture_28-2-2022_125717_127 0 0 1](https://user-images.githubusercontent.com/38440373/156025493-0feda27a-1907-4bfc-8da8-f2f57851746a.jpeg)
-
-
+![Web capture_28-2-2022_125717_127 0 0 1](https://user-images.githubusercontent.com/38440373/156175380-41f14a9b-9697-4ce5-9967-48b7231c0eb8.jpeg)
 
 ## The Inputs
 The app is able to read in .dat CTD files which are produced by AutoDeck from the raw VPR data. These CTD data files should be distinct for every hour of the VPR deployment. At this time only one 'hour' of data can be displayed at a time.
