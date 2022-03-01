@@ -1,18 +1,7 @@
-library(shiny)
-library(vprr)
-library(ggplot2)
-library(metR)
-library(dplyr)
-library(DT)
-library(base64enc)
-library(magick)
-library(shinyFiles)
-library(bslib)
-library(thematic)
-library(shinyWidgets)
+librarian::shelf(shiny, vprr, ggplot2, metR, dplyr, DT, base64enc, magick, shinyFiles, bslib, thematic, shinyWidgets)
+
 
 thematic_shiny() #theme plots to match bs_theme() argument
-
 light <- bs_theme(bootswatch = 'zephyr')
 dark <-  bs_theme(bootswatch = 'superhero')
 
