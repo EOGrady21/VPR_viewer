@@ -8,6 +8,21 @@ Once the code is downloaded onto your local machine you should be able to open t
 
 Note that you may be prompted to install required packages before running the app for the first time. The `librarian` package is used to manage required packages. Please install this package before running the app for the first time using `install.packages("librarian")` 
 
+The app expects certain directory structures which would be produced by AutoDeck and expected at the next stage of processing (Visual Plankton). These directory structures should be maintained for best practices and to avoid unexpected errors.
+
+The directory structure is described as follows in the DAVPR manual:
+
+"  (drive):\data\cruise\rois\vprxxx\dxxx\hxx
+(drive) can be any drive available on the computer at hand
+\data should be there, no freedom
+\cruise is the cruise name during which the data was collected, is user specified.
+\rois should be there, no freedom
+\vprxxx should be there where xxx is a cast number (no leading zeros)
+\dxxx\hxx are automatically generated in the proper format with dxxx being the day of the year and hxx the hour of the day as computed from the date information contained in the input file name. If you want these day and hour value to be consistent between data collection and data processing, you need to make sure that both the VPR and the processing computer are set to the same time zone, GMT being our preferred setting.
+
+In the day folder ((drive):\data\cruise\rois\vprxxx\dxxx), JpegLS_ADeck will also create ctd data files with names hxxctd.dat."
+
+
 ## About
 This shiny app is in development at the Bedford Institute of Oceanogrpahy. It is currently being tested with 2008 version of the “Digital AutoVPR”, from SeaScan Inc, used in a tow-yo deployment pattern.
 
