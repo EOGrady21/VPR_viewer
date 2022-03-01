@@ -13,7 +13,7 @@ The Plot tab displays 4 plots including a profile summary of CTD data (temperatu
 The Summary tab displays the range of each data variable found in the CTD data file. Note that if the sliders are used to narrow the data range, this will also be perpetuated through the summary output. Eg. Total data may range from 0-100 DB but if the pressure slider (in the metadata input), is capped at 50 DB, the summary will show that data ranges from 0-50 DB.
 
 The Table tab displays a data table with all the CTD and ROI data, as well as some calculated vairables and metadata. Note that the table will also reflect changes made using the metadata slider ranges. 
-![Web capture_28-2-2022_125823_127 0 0 1](https://user-images.githubusercontent.com/38440373/156025469-fd5690ab-18e1-47ef-877a-9008d7980f46.jpeg)
+
 
 The Images tab displays an image gallery of ROIs for easy browsing and initial identification of plankton. Note that these images may also be subset if metadata sliders are used to subset data. 
 
