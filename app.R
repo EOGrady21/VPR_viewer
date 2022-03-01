@@ -222,54 +222,54 @@ server <- function(input, output, session) {
         isolate({
             all_dat <- datasetInput()
             
-            print(paste('Data Summary Report '));
-            print(paste('Report processed:', as.character(Sys.time())));
-            print(paste('Cast: ', input$tow, '   Day: ', input$day, '   Hour: ', input$hour));
+            cat(paste('Data Summary Report ', '\n'));
+            cat(paste('Report processed:', as.character(Sys.time())), '\n');
+            cat(paste('Cast: ', input$tow, '   Day: ', input$day, '   Hour: ', input$hour), '\n');
             
             
             
-            print(paste(' >>>>  Time '));
-            print(paste('Data points: ', length(all_dat$time_ms)));
-            print(paste('Range: ', min(all_dat$time_ms),' - ', max(all_dat$time_ms), ' (ms) '));
-            print(paste('Range: ', min(all_dat$avg_hr),' - ', max(all_dat$avg_hr), ' (hr) '))
+            cat(paste(' >>>>  Time ', '\n'));
+            cat(paste('Data points: ', length(all_dat$time_ms), '\n'));
+            cat(paste('Range: ', min(all_dat$time_ms),' - ', max(all_dat$time_ms), ' (ms) ', '\n'));
+            cat(paste('Range: ', min(all_dat$avg_hr),' - ', max(all_dat$avg_hr), ' (hr) ', '\n'))
             
             
             
-            print(paste(' >>>>  Conductivity '))
-            print(paste('Data points: ', length(all_dat$conductivity)))
-            print(paste('Range: ', min(all_dat$conductivity),' - ', max(all_dat$conductivity)))
+            cat(paste(' >>>>  Conductivity ', '\n'))
+            cat(paste('Data points: ', length(all_dat$conductivity), '\n'))
+            cat(paste('Range: ', min(all_dat$conductivity),' - ', max(all_dat$conductivity), '\n'))
             
             
-            print(paste(' >>>>  Temperature '))
-            print(paste('Data points: ', length(all_dat$temperature)))
-            print(paste('Range: ', min(all_dat$temperature),' - ', max(all_dat$temperature), ' (c) '))
+            cat(paste(' >>>>  Temperature ', '\n'))
+            cat(paste('Data points: ', length(all_dat$temperature), '\n'))
+            cat(paste('Range: ', min(all_dat$temperature),' - ', max(all_dat$temperature), ' (c) ', '\n'))
             
-            print(paste(' >>>>  Pressure '))
-            print(paste('Data points: ', length(all_dat$pressure)))
-            print(paste('Range: ', min(all_dat$pressure),' - ', max(all_dat$pressure), ' (db) '))
+            cat(paste(' >>>>  Pressure ', '\n'))
+            cat(paste('Data points: ', length(all_dat$pressure), '\n'))
+            cat(paste('Range: ', min(all_dat$pressure),' - ', max(all_dat$pressure), ' (db) ', '\n'))
             
-            print(paste(' >>>>  Salinity '))
-            print(paste('Data points: ', length(all_dat$salinity)))
-            print(paste('Range: ', min(all_dat$salinity),' - ', max(all_dat$salinity), ' (PSU) '))
-            
-            
-            print(paste(' >>>>  Fluorescence '))
-            print(paste('Data points: ', length(all_dat$fluorescence_mv)))
-            print(paste('Range: ', min(all_dat$fluorescence_mv),' - ', max(all_dat$fluorescence_mv), ' (mv)'))
+            cat(paste(' >>>>  Salinity ', '\n'))
+            cat(paste('Data points: ', length(all_dat$salinity), '\n'))
+            cat(paste('Range: ', min(all_dat$salinity),' - ', max(all_dat$salinity), ' (PSU) ', '\n'))
             
             
-            print(paste(' >>>>  Turbidity '))
-            print(paste('Data points: ', length(all_dat$turbidity_mv)))
-            print(paste('Range: ', min(all_dat$turbidity_mv),' - ', max(all_dat$turbidity_mv), ' (mv) '))
+            cat(paste(' >>>>  Fluorescence ', '\n'))
+            cat(paste('Data points: ', length(all_dat$fluorescence_mv), '\n'))
+            cat(paste('Range: ', min(all_dat$fluorescence_mv),' - ', max(all_dat$fluorescence_mv), ' (mv)', '\n'))
             
             
-            print(paste(' >>>>  ROI count '))
-            print(paste('Data points: ', length(all_dat$n_roi)))
-            print(paste('Range: ', min(all_dat$n_roi),' - ', max(all_dat$n_roi), ' (counts) '))
+            cat(paste(' >>>>  Turbidity ', '\n'))
+            cat(paste('Data points: ', length(all_dat$turbidity_mv), '\n'))
+            cat(paste('Range: ', min(all_dat$turbidity_mv),' - ', max(all_dat$turbidity_mv), ' (mv) ', '\n'))
             
-            print(paste(' >>>>  Sigma T '))
-            print(paste('Data points: ', length(all_dat$sigmaT)))
-            print(paste('Range: ', min(all_dat$sigmaT),' - ', max(all_dat$sigmaT)))
+            
+            cat(paste(' >>>>  ROI count ', '\n'))
+            cat(paste('Data points: ', length(all_dat$n_roi), '\n'))
+            cat(paste('Range: ', min(all_dat$n_roi),' - ', max(all_dat$n_roi), ' (counts) ', '\n'))
+            
+            cat(paste(' >>>>  Sigma T ', '\n'))
+            cat(paste('Data points: ', length(all_dat$sigmaT), '\n'))
+            cat(paste('Range: ', min(all_dat$sigmaT),' - ', max(all_dat$sigmaT), '\n'))
         })
         
     })
