@@ -1,6 +1,14 @@
 # Plankton Plotter
 A shiny app to visualize plankton data and images from the Video Plankton Recorder (VPR). 
 
+## Getting Started
+In order to run this app the user should have (at a minimum) current versions of R & RStudio. The easiest way to get this app is to clone it through Git using GitHub Desktop. It can also be downloaded manually using the green 'Code' button at the top right of the repository. 
+
+Once the code is downloaded onto your local machine you should be able to open the project in RStudio. Inside the project you can open the app by using the interactive 'Run App' button in RStudio (at the top right of your editor) or by typing `runApp()` in the command line. 
+
+Note that you may be prompted to install required packages before running the app for the first time. The `librarian` package is used to manage required packages. Please install this package before running the app for the first time using `install.packages("librarian")` 
+
+## About
 This shiny app is in development at the Bedford Institute of Oceanogrpahy. It is currently being tested with 2008 version of the “Digital AutoVPR”, from SeaScan Inc, used in a tow-yo deployment pattern.
 
 This app is designed to assist in the visualization of data from the VPR by resesarch scientists while they are onboard research cruises. It is meant to be a quick and easy way to check data before full processing can take place. The app displays both CTD data and ROI (Region of Interest) data. Each Region of Interest (ROI) represents an object detected within a VPR frame by the autoDeck software. AutoDeck is a software provided with the VPR by SeaScan which processes the raw video output from the VPR and outputs a series of image files (ROIs).
