@@ -6,6 +6,11 @@ light <- bs_theme(bootswatch = 'zephyr')
 dark <-  bs_theme(bootswatch = 'superhero')
 
 ui <- fluidPage(
+  
+ #debugging
+  actionButton("browser", "browser"),
+  tags$script("$('#browser').hide();"),
+ 
     
     theme = light,
     switchInput(inputId = "dark_mode", label = "Dark mode", value = FALSE, size = 'mini'),  
@@ -108,7 +113,7 @@ Shiny.onInputChange('shiny_height',myHeight)
                         tabPanel("Table", DT::dataTableOutput("ctdroi")),
                         tabPanel("Images",
                                  shinyDirButton("dir", "Choose ROI directory", "Upload - Please select 'hour' folder of images"),
-                                 numericInput('num', 'Number of images shown', value = 100, step = 2),
+                                 numericInput('num', 'Number of images shown', value = 10, step = 2),
                                  
                                  fluidRow(
                                      column( 1, 
@@ -127,6 +132,10 @@ Shiny.onInputChange('shiny_height',myHeight)
 
 
 server <- function(input, output, session) {
+    #debugging
+    observeEvent(input$browser,{
+    browser()
+  })
     observe(session$setCurrentTheme(
         if (isTRUE(input$dark_mode)) dark else light
     ))
@@ -194,7 +203,7 @@ server <- function(input, output, session) {
     
     
     dat_qc <- reactive({
-  
+    #input$update
         all_dat <- datasetInput()
         
         all_dat_q <- all_dat %>%
@@ -525,12 +534,14 @@ server <- function(input, output, session) {
     
     # path
     path <- reactive({
+        # parseDirPath(roots = c('C:/' = 'C:/', 'D:/' = 'D:/', 'E:/' = 'E:/', 'F:/' = 'F:/'),
+        #              selection = input$dir) # try something new, not working
         home <- input$dir$root
         file.path(home, paste(unlist(dir()$path[-1]), collapse = .Platform$file.sep))
     })
     
     # files
-    output$files <- renderPrint(list.files(path()))
+   output$files <- renderPrint(list.files(path()))
 
     values <- reactiveValues(
         upload_state = NULL
@@ -539,17 +550,18 @@ server <- function(input, output, session) {
     observeEvent(input$dir, {
         values$upload_state <- 'uploaded'
     })
-    
-    imgs_path <- reactive({
+    # browser()
+     imgs_path <- reactive({
+      
         if (is.null(values$upload_state)) {
-            
+
             imgs_path <-  paste0(input$basepath, '/', input$cruise, "/rois/vpr", input$tow,"/d", input$day, "/h", input$hour, "/")
-           
+
         } else if (values$upload_state == 'uploaded') {
             imgs_path <- path()
-            
-        } 
-    })
+
+        }
+     })
     
     
     ipgmax <- reactive(input$num)
@@ -558,31 +570,40 @@ server <- function(input, output, session) {
     index2 <- reactive(seq(num_col()+1, num_col()*2))
     
     
+    imgobj <- reactive ({
+     # isolate({
+      
+      all_dat <- dat_qc()
+      imgss <- list.files(imgs_path(), pattern = '.tif', full.names = TRUE)
+      
+      roi_ids <- vpr_roi(imgss)
+      roi_ids <- as.numeric(substr(roi_ids, 1, 8))
+      validroi_ind <- which(roi_ids %in% all_dat$roi)
+      validroi <- roi_ids[roi_ids %in% all_dat$roi]
+      
+      validate(
+        need(length(validroi) != 0, "No valid ROI images found")
+      )
+      
+      imgss <- imgss[validroi_ind]
+      
+      imgss <- imgss[index()]
+      
+      roi_id_string <- stringr::str_c(validroi, sep = ',')
+      
+      image <- image_read(na.omit(imgss))
+      
+      image <- image_annotate(image, roi_id_string, color = 'red', size = 15)
+      
+      image <- image_append(image_border(image, color = 'white', geometry = '10x8'), stack = TRUE)
+      
+    })
+    #})
+   
     
     output$image <- renderImage({
-        
-        all_dat <- dat_qc()
-        imgss <- list.files(imgs_path(), pattern = '.tif', full.names = TRUE)
-        
-        roi_ids <- vpr_roi(imgss)
-        roi_ids <- as.numeric(substr(roi_ids, 1, 8))
-        validroi_ind <- which(roi_ids %in% all_dat$roi)
-        validroi <- roi_ids[roi_ids %in% all_dat$roi]
-        
-        imgss <- imgss[validroi_ind]
-        
-        imgss <- imgss[index()]
-        
-        roi_id_string <- stringr::str_c(validroi, sep = ',')
-        
-        image <- image_read(na.omit(imgss))
-        
-        image <- image_annotate(image, roi_id_string, color = 'red', size = 15)
-        
-        image <- image_append(image_border(image, color = 'white', geometry = '10x8'), stack = TRUE)
-        
-        
-        tmpfile <- image %>%
+  #input$update
+      tmpfile <- imgobj() %>%
             image_write(tempfile(fileext='png'), format = 'png')
         
         list(src = tmpfile, contentType = "image/png")
@@ -590,29 +611,40 @@ server <- function(input, output, session) {
     }, deleteFile = FALSE)
     
     
+    imgobj2 <- reactive ({
+     # isolate ({
+      all_dat <- dat_qc()
+      imgss <- list.files(imgs_path(), pattern = '.tif', full.names = TRUE)
+      
+      roi_ids <- vpr_roi(imgss)
+      roi_id_string <- stringr::str_c(roi_ids, sep = ',')
+      
+      roi_ids <- as.numeric(substr(roi_ids, 1, 8))
+      validroi_ind <- which(roi_ids %in% all_dat$roi)
+      validroi <- roi_ids[roi_ids %in% all_dat$roi]
+      
+      validate(
+        need(length(validroi) != 0, "No valid ROI images found")
+      )
+      
+      imgss <- imgss[validroi_ind]
+      imgss <- imgss[index2()]
+      
+      image <- image_read(na.omit(imgss))
+      
+      image <- image_annotate(image, roi_id_string, color = 'red', size = 15)
+      
+      
+      image <- image_append(image_border(image, color = 'white'), stack = TRUE)
+      
+    })
+  #  })
+    
     output$image2 <- renderImage({
-        
-        all_dat <- dat_qc()
-        imgss <- list.files(imgs_path(), pattern = '.tif', full.names = TRUE)
-        
-        roi_ids <- vpr_roi(imgss)
-        roi_id_string <- stringr::str_c(roi_ids, sep = ',')
-        
-        roi_ids <- as.numeric(substr(roi_ids, 1, 8))
-        validroi_ind <- which(roi_ids %in% all_dat$roi)
-        validroi <- roi_ids[roi_ids %in% all_dat$roi]
-        
-        imgss <- imgss[validroi_ind]
-        imgss <- imgss[index2()]
-        
-        image <- image_read(na.omit(imgss))
-        
-        image <- image_annotate(image, roi_id_string, color = 'red', size = 15)
+      #input$update
         
         
-        image <- image_append(image_border(image, color = 'white'), stack = TRUE)
-        
-        tmpfile <- image %>%
+        tmpfile <- imgobj2() %>%
             image_write(tempfile(fileext='png'), format = 'png')
         
         list(src = tmpfile, contentType = "image/png")
