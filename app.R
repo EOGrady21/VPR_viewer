@@ -149,7 +149,15 @@ server <- function(input, output, session) {
         
         ctd_dat <- vpr_ctd_read(ctd_fns$datapath, station_of_interest = input$station, day = input$day, hour = input$hour)
         
-        vpr_oce_create(ctd_dat)
+        # check metadata 
+        # ONLY CHECKS HOUR, DEV REQ
+        # TO DO: Check day, tow and cruise
+        validate( c(
+           need(vpr_hour(input$ctd_files)$name == paste0('h',input$hour), "Please correct metadata! (Incorrect hour)")
+           )
+        )
+        
+        #vpr_oce_create(ctd_dat)
         #get ROI data
         
         roi_files <- list.files(file.path(input$basepath, input$cruise, 'rois', paste0('vpr', input$tow),paste0('d', input$day), paste0('h', input$hour) ))
@@ -166,6 +174,10 @@ server <- function(input, output, session) {
         #subset data individually
         ctd_dat_sub <- ctd_dat[ctd_sub,]
         
+        validate(
+          need(length(ctd_dat_sub[[1]]) != 0, 'No ROIs found for CTD data! Please verify metadata!')
+        )
+        
         #EC & KS fix 2019/08/08 due to error producing NA roi numbers
         roi_dat_sub <- rois[!duplicated(rois)]
         roi_dat_sub <- rois[ctd_sub]
@@ -179,7 +191,7 @@ server <- function(input, output, session) {
         all_dat <- all_dat %>%
             dplyr::mutate(., avg_hr = time_ms/3.6e+06)
         
-        all_dat_o <- all_dat #save original data as seperate object for comparison
+        # all_dat_o <- all_dat #save original data as seperate object for comparison
         all_dat <- all_dat %>% #filter data based on parameter ranges set in step 1
             dplyr::filter(., salinity > min(input$sal_range)) %>%
             dplyr::filter(., salinity < max(input$sal_range)) %>%
