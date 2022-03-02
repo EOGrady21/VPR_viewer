@@ -602,13 +602,15 @@ server <- function(input, output, session) {
    
     
     output$image <- renderImage({
-  #input$update
+      input$update
+      isolate({
       tmpfile <- imgobj() %>%
             image_write(tempfile(fileext='png'), format = 'png')
         
         list(src = tmpfile, contentType = "image/png")
-        
+      })
     }, deleteFile = FALSE)
+   
     
     
     imgobj2 <- reactive ({
@@ -641,14 +643,14 @@ server <- function(input, output, session) {
   #  })
     
     output$image2 <- renderImage({
-      #input$update
+      input$update
         
-        
+        isolate ({
         tmpfile <- imgobj2() %>%
             image_write(tempfile(fileext='png'), format = 'png')
         
         list(src = tmpfile, contentType = "image/png")
-        
+        })
     }, deleteFile = FALSE)
     
     
