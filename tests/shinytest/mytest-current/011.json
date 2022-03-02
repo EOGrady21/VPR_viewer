@@ -2,6 +2,7 @@
   "input": {
     "basepath": "C:/data",
     "binSize": 2,
+    "browser": 0,
     "cruise": "IML2018051",
     "ctd_files": {
       "name": [

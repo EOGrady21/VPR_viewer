@@ -2,6 +2,7 @@
   "input": {
     "basepath": "C:/data",
     "binSize": 5,
+    "browser": 0,
     "cruise": "IML2018051",
     "ctd_files": {
       "name": [
@@ -27,7 +28,7 @@
       0.1
     ],
     "imageVolume": 108155,
-    "num": 100,
+    "num": 10,
     "pres_range": [
       0,
       51
