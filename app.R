@@ -1,4 +1,4 @@
-librarian::shelf(shiny, vprr, ggplot2, metR, dplyr, DT, base64enc, magick, shinyFiles, bslib, thematic, shinyWidgets)
+librarian::shelf(shiny, vprr, ggplot2, metR, dplyr, DT, base64enc, magick, shinyFiles, bslib, thematic, shinyWidgets, quiet = TRUE)
 
 
 thematic_shiny() #theme plots to match bs_theme() argument
