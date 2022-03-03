@@ -2,9 +2,9 @@
 A shiny app to visualize plankton data and images from the Video Plankton Recorder (VPR). 
 
 ## Getting Started
-In order to run this app the user should have (at a minimum) current versions of R & RStudio. The easiest way to get this app is to clone it through Git using GitHub Desktop. It can also be downloaded manually using the green 'Code' button at the top right of the repository. 
+In order to run this app the user should have (at a minimum) current versions of R & RStudio. The easiest way to get this app is to clone this repository through Git using GitHub Desktop (it can also be downloaded manually) using the green 'Code' button at the top right of the repository. 
 
-Once the code is downloaded onto your local machine you should be able to open the project in RStudio. Inside the project you can open the app by using the interactive 'Run App' button in RStudio (at the top right of your editor) or by typing `runApp()` in the command line. 
+Once the code is downloaded onto your local machine you should be able to open the project in RStudio (`plankton_plotter.RProj`). Inside the project you can open the app by opening the script `app.R`, then click the interactive 'Run App' button in RStudio (at the top right of your editor) or type `runApp()` in the console. 
 
 Note that you may be prompted to install required packages before running the app for the first time. The `librarian` package is used to manage required packages. Please install this package before running the app for the first time using `install.packages("librarian")` 
 
@@ -64,7 +64,7 @@ The app is also able to display, in a gallery format, the ROI images output from
 The plots displayed in the Plots tab may be downloaded and saved as .png files by using the 'Save' buttons found at the upper right hand corner of each plot. The plot PNGs are automatically named based on metadata provided in the app.
 
 ## Quality Control
-Some initial quality control or subsetting of data may be performed using the metadata input and slider ranges on the left hand side. These sliders allow a user to specify the range of certain variables to be displayed. This can be useful in two particular scenarios, A) Where a user finds there are extraneous data points outside normal  ranges which are making the plots difficult to read, B) Where a user would like to focus visualization on a specific subset of the data captured during a deployment. If a user decides to subset the data using the slider ranges, this subset will be perpetuated through all tabs including Summary, Table and Images.
+Some initial quality control or subsetting of data may be performed using the metadata input and slider ranges on the left hand side panel. These sliders allow a user to specify the range of certain variables to be displayed. This can be useful in two particular scenarios, A) Where a user finds there are extraneous data points outside normal  ranges which are making the plots difficult to read, B) Where a user would like to focus visualization on a specific subset of the data captured during a deployment. If a user decides to subset the data using the slider ranges, this subset will be perpetuated through all tabs including Summary, Table and Images.
 In scenario B, a user may want to browse ROI images within a specific range, this can be very useful if a 'layer' can be visualized through the initial data or even on other instruments onboard. Using the slider ranges to isolate this layer, a user can then browse the images tab to get an initial idea of what the species composition of this layer might be. 
 
 
