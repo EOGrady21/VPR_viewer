@@ -82,7 +82,7 @@ Shiny.onInputChange('shiny_height',myHeight)
                         max = 500, value = c(0, 500)),
             
             sliderInput("hr_range", label = h3("Time Range (hr)"), min = 0, 
-                        max = 4, value = c(0, 4), step = 0.1)
+                        max = 24, value = c(0, 24), step = 0.1)
         ),
         
         
@@ -174,13 +174,14 @@ server <- function(input, output, session) {
         #subset data individually
         ctd_dat_sub <- ctd_dat[ctd_sub,]
         
+        
         validate(
           need(length(ctd_dat_sub[[1]]) != 0, 'No ROIs found for CTD data! Please verify metadata!')
         )
         
         #EC & KS fix 2019/08/08 due to error producing NA roi numbers
         roi_dat_sub <- rois[!duplicated(rois)]
-        roi_dat_sub <- rois[ctd_sub]
+        #roi_dat_sub <- rois[ctd_sub] # overwriting bug fix? EOG 3/3/22
         
         #combine roi and ctd data
         all_dat <- ctd_dat_sub %>%
