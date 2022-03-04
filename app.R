@@ -159,7 +159,8 @@ server <- function(input, output, session) {
         #vpr_oce_create(ctd_dat)
         #get ROI data
         
-        roi_files <- list.files(file.path(input$basepath, input$cruise, 'rois', paste0('vpr', input$tow),paste0('d', input$day), paste0('h', input$hour) ))
+        if(input$basepath == '~'){ bp <- getwd()} else {bp <- input$basepath}
+        roi_files <- list.files(file.path(bp, input$cruise, 'rois', paste0('vpr', input$tow),paste0('d', input$day), paste0('h', input$hour) ))
         roi_num <- substr(roi_files, 5, nchar(roi_files) - 4)
 
         #get roi number that will match ctd time_ms
