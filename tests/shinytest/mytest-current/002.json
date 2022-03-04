@@ -1,0 +1,87 @@
+{
+  "input": {
+    "basepath": "../../www",
+    "binSize": 5,
+    "browser": 0,
+    "cruise": "IML2018051",
+    "ctd_files": {
+      "name": [
+        "h22ctd.dat"
+      ],
+      "size": [
+        2343425
+      ],
+      "type": [
+        ""
+      ],
+      "datapath": [
+        "0.dat"
+      ]
+    },
+    "dark_mode": false,
+    "day": "286",
+    "dir": 0,
+    "event": "",
+    "hour": "22",
+    "hr_range": [
+      0,
+      24
+    ],
+    "imageVolume": 108155,
+    "num": 10,
+    "pres_range": [
+      0,
+      500
+    ],
+    "sal_range": [
+      28,
+      35
+    ],
+    "shiny_height": 744,
+    "shiny_width": 992,
+    "station": "",
+    "temp_range": [
+      0,
+      15
+    ],
+    "tow": "0",
+    "update": 1
+  },
+  "output": {
+    "plot": {
+      "message": "No ROIs found for CTD data! Please verify metadata!",
+      "call": "NULL",
+      "type": [
+        "shiny.silent.error",
+        "validation"
+      ]
+    },
+    "plot2": {
+      "message": "No ROIs found for CTD data! Please verify metadata!",
+      "call": "NULL",
+      "type": [
+        "shiny.silent.error",
+        "validation"
+      ]
+    },
+    "plot3": {
+      "message": "No ROIs found for CTD data! Please verify metadata!",
+      "call": "NULL",
+      "type": [
+        "shiny.silent.error",
+        "validation"
+      ]
+    },
+    "plot4": {
+      "message": "No ROIs found for CTD data! Please verify metadata!",
+      "call": "NULL",
+      "type": [
+        "shiny.silent.error",
+        "validation"
+      ]
+    }
+  },
+  "export": {
+
+  }
+}

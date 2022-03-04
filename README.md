@@ -68,3 +68,7 @@ Some initial quality control or subsetting of data may be performed using the me
 In scenario B, a user may want to browse ROI images within a specific range, this can be very useful if a 'layer' can be visualized through the initial data or even on other instruments onboard. Using the slider ranges to isolate this layer, a user can then browse the images tab to get an initial idea of what the species composition of this layer might be. 
 
 
+
+## Sample Data
+Sample data is included with this app for the purposes of testing. It should not be considered valid. It is a minimal example in order to test the plots and other app features. If you are looking for a valid example data set to visualize or play with the app please contact the maintainer directly. 
+
