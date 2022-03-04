@@ -1,6 +1,4 @@
-librarian::shelf(shiny, ggplot2, metR, dplyr, DT, base64enc, shinyFiles, bslib, thematic, shinyWidgets, quiet = TRUE)
-library(vprr)
-library(magick)
+librarian::shelf(shiny, vprr, magick, ggplot2, metR, dplyr, DT, base64enc, shinyFiles, bslib, thematic, shinyWidgets, quiet = TRUE)
 
 thematic_shiny() #theme plots to match bs_theme() argument
 light <- bs_theme(bootswatch = 'zephyr')
