@@ -32,3 +32,6 @@ before_install:
   - "if [ $(phantomjs --version) != $PHANTOMJS_VERSION ]; then hash -r; fi"
   - "phantomjs --version"
 
+script:
+  - R -f run_tests.R
+  

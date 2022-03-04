@@ -1,6 +1,6 @@
 {
   "input": {
-    "basepath": "C:/Users/ChisholmE/Documents/GitHub/plankton_plotter/www",
+    "basepath": "~/www",
     "binSize": 5,
     "browser": 0,
     "cruise": "IML2018051",
