@@ -1,8 +1,8 @@
 app <- ShinyDriver$new("../../")
 app$snapshotInit("mytest")
 
-app$uploadFile(ctd_files = "../../www/IML2018051/rois/vpr0/d286/h22ctd.dat") # <-- This should be the path to the file, relative to the app's tests/shinytest directory
-app$setInputs(basepath = "C:/Users/ChisholmE/Documents/GitHub/plankton_plotter/www")
+app$uploadFile(ctd_files = "IML2018051/rois/vpr0/d286/h22ctd.dat") # <-- This should be the path to the file, relative to the app's tests/shinytest directory
+app$setInputs(basepath = "~")
 app$setInputs(update = "click")
 app$snapshot()
 app$snapshot()
