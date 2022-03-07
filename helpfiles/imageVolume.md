@@ -2,5 +2,5 @@
 
 ***
 
-This input is calculated based on VPR settings, it is unique to the cruise and should be re-calculated often to ensure accuracy. It is calculated based on information provided in the VPR manual, and is unique to a specific instrument. It is measured in units of *____*
+This input is based on AutoDeck settings, it is calculated from the VPR calibration file (unique to each insturment). It will change based on AutoDeck settings and should be updated often. It is measured in cubic mm. 
 
