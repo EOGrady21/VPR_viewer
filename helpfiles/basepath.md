@@ -1,7 +1,7 @@
 ### Basepath
 
 ***
-This input should be the location of your 'cruise' folder, which contains your relevant data. 
+This input should be the location of your "cruise" folder, which contains your relevant data. 
 The file path should be complete or use the `~` notation to indicate the working directory. 
 
 *Example:* 
