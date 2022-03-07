@@ -1,4 +1,5 @@
-librarian::shelf(shiny, vprr, magick, ggplot2, metR, dplyr, DT, base64enc, shinyFiles, bslib, thematic, shinyWidgets, quiet = TRUE)
+librarian::shelf(shiny, vprr, magick, ggplot2, metR, dplyr, DT, base64enc, shinyFiles, bslib, thematic, 
+                 shinyWidgets, shinyhelper, quiet = TRUE)
 
 thematic_shiny() #theme plots to match bs_theme() argument
 light <- bs_theme(bootswatch = 'zephyr')
@@ -38,18 +39,24 @@ Shiny.onInputChange('shiny_height',myHeight)
             helpText("Input Metadata."),
             fluidRow(
                 column(3, offset = 5,
-                       actionButton('update', label = 'Update', icon(name = 'refresh', lib = 'glyphicon')),
+                       actionButton('update', label = 'Update', icon(name = 'refresh', lib = 'glyphicon')) %>%
+                         helper(content = 'update'),
                 )),
             
-            fileInput('ctd_files', label = 'CTD Files', multiple = FALSE, accept = '.dat'),
+            fileInput('ctd_files', label = 'CTD Files', multiple = FALSE, accept = '.dat') %>%
+              helper(content = 'ctd_files'),
             
-            textInput('cruise', 'Cruise ID', placeholder = 'eg. IML2018051', value = 'IML2018051'),
+            textInput('cruise', 'Cruise ID', placeholder = 'eg. IML2018051', value = 'IML2018051') %>% 
+              helper(content = 'cruise'),
             
-            textInput('tow', label = 'VPR Tow ID', placeholder = 'eg. 1', value = '0'),
+            textInput('tow', label = 'VPR Tow ID', placeholder = 'eg. 1', value = '0') %>%
+              helper(content = 'tow'),
             
-            textInput('day', 'Day', placeholder = 'eg. 283', value = '286'),
+            textInput('day', 'Day', placeholder = 'eg. 283', value = '286') %>%
+              helper(content = 'day'),
             
-            textInput('hour', 'Hour', placeholder = 'eg. 06', value = '22'),
+            textInput('hour', 'Hour', placeholder = 'eg. 06', value = '22') %>%
+              helper(content = 'hour'),
             
             # checkboxInput("multiple", "Multiple Hours"),
             # conditionalPanel(
@@ -58,15 +65,20 @@ Shiny.onInputChange('shiny_height',myHeight)
             #   textInput('hour3', 'Hour', placeholder = 'eg. 06')
             # ),
             
-            textInput('station', label = 'Station ID', placeholder = 'eg. CAP1-2'),
+            textInput('station', label = 'Station ID', placeholder = 'eg. CAP1-2') %>%
+              helper(content = 'station'),
 
-            textInput('event', label = 'Event ID', placeholder = 'eg. 001'),
+            textInput('event', label = 'Event ID', placeholder = 'eg. 001') %>%
+              helper(content = 'event'),
 
-            numericInput('imageVolume', label = 'Image Volume ', value = 108155 ),
+            numericInput('imageVolume', label = 'Image Volume ', value = 108155 ) %>%
+              helper(content = 'imageVolume'),
 
-            numericInput('binSize', label = 'Bin Size', value = 5),
+            numericInput('binSize', label = 'Bin Size', value = 5) %>%
+              helper(content = 'binSize'),
 
-            textInput('basepath', label = 'Base Path', placeholder = 'E:/VP_data', value = 'C:/data'), # 'C:/data'
+            textInput('basepath', label = 'Base Path', placeholder = 'E:/VP_data', value = 'C:/data') %>%
+              helper(content = 'basepath'), # 'C:/data'
 
             ##OPTIONAL QC PARAMETERS##
             #min and max values of each parameter
@@ -91,7 +103,8 @@ Shiny.onInputChange('shiny_height',myHeight)
                         tabPanel("Plot", 
                                  fluidRow(
                                      column(3, offset = 9,
-                                            downloadButton('save1', label = 'Save'))
+                                            downloadButton('save1', label = 'Save') %>%
+                                              helper(content = 'save'))
                                  ),
                                  fluidRow(
                                      column(12, plotOutput("plot")),
@@ -111,7 +124,8 @@ Shiny.onInputChange('shiny_height',myHeight)
                         tabPanel("Summary", verbatimTextOutput("summary")),
                         tabPanel("Table", DT::dataTableOutput("ctdroi")),
                         tabPanel("Images",
-                                 shinyDirButton("dir", "Choose ROI directory", "Upload - Please select 'hour' folder of images"),
+                                 shinyDirButton("dir", "Choose ROI directory", "Upload") %>%
+                                   helper(content = 'roi_dir'),
                                  numericInput('num', 'Number of images shown', value = 10, step = 2),
                                  
                                  fluidRow(
@@ -139,6 +153,7 @@ server <- function(input, output, session) {
         if (isTRUE(input$dark_mode)) dark else light
     ))
     
+    observe_helpers()
     
     datasetInput <- reactive({
         
