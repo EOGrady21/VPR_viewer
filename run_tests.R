@@ -1,6 +1,7 @@
 # run tests
 library(testthat)
 library(shinytest)
+library(spelling)
 
 # test_that("Application works", {
 #   # Use compareImages=FALSE because the expected image screenshots were created
