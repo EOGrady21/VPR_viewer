@@ -3,12 +3,12 @@ suppressWarnings(library(testthat, quietly = TRUE))
 suppressWarnings(library(shinytest, quietly = TRUE))
 suppressWarnings(library(spelling, quietly = TRUE))
 
-test_that("Application works", {
-  # Use compareImages=FALSE because the expected image screenshots were created
-  # on a Mac, and they will differ from screenshots taken on the CI platform,
-  # which runs on Linux.
-  expect_pass(testApp(".", compareImages = FALSE))
-})
+# test_that("Application works", {
+#   # Use compareImages=FALSE because the expected image screenshots were created
+#   # on a Mac, and they will differ from screenshots taken on the CI platform,
+#   # which runs on Linux.
+#   expect_pass(testApp(".", compareImages = FALSE))
+# })
 
 test_that('Spelling in help files',{
   
