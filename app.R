@@ -1,5 +1,12 @@
 suppressWarnings(librarian::shelf(shiny, vprr, magick, ggplot2, metR, dplyr, DT, base64enc, shinyFiles, bslib, thematic,
-                 shinyWidgets, shinyhelper, spelling, quiet = TRUE))
+                 shinyWidgets, shinyhelper, spelling, exiftoolr, quiet = TRUE))
+
+# install exiftool to check image metadata
+# required when run on new machine
+is_exiftool_available <- function() {
+  !is.null(tryCatch(exif_version(), error = function(e) NULL))
+}
+if(is_exiftool_available() == FALSE){install_exiftool()}
 
 thematic_shiny() #theme plots to match bs_theme() argument
 light <- bs_theme(bootswatch = 'zephyr')
@@ -176,7 +183,12 @@ server <- function(input, output, session) {
         
         if(length(grep(input$basepath, pattern = '~')) != 0){
           bp <- file.path(gsub(pattern = '~', replacement = getwd(), x = input$basepath))
-                          }else {bp <- input$basepath}
+        }else {bp <- input$basepath}
+        
+        # check basepath 
+        validate( c(
+          need(file.exists(bp) == TRUE, "Invalid basepath!")
+        ))
         
         roi_files <- list.files(file.path(bp, input$cruise, 'rois', paste0('vpr', input$tow),paste0('d', input$day), paste0('h', input$hour) ))
         roi_num <- substr(roi_files, 5, nchar(roi_files) - 4)
