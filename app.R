@@ -133,8 +133,17 @@ Shiny.onInputChange('shiny_height',myHeight)
                         tabPanel("Images",
                                  shinyDirButton("dir", "Choose ROI directory", "Upload") %>%
                                    helper(content = 'roi_dir'),
-                                 numericInput('num', 'Number of images shown', value = 10, step = 2),
-                                 
+                                 fluidRow( 
+                                   column(6,
+                                   numericInput('num', 'Number of images shown', value = 10, step = 2)
+                                   ),
+                                   column(6,
+                                   pickerInput(inputId = 'sorting', label = 'Image Sorting',
+                                          choices = list('Time (default)', 'Small -> Large', 'Large -> Small'),
+                                          selected = 'Small -> Large') %>%
+                                   helper(content = 'image_sorting')
+                                   )
+                                   ),
                                  fluidRow(
                                      column( 1, 
                                              imageOutput("image")
@@ -593,7 +602,8 @@ server <- function(input, output, session) {
     observeEvent(input$dir, {
         values$upload_state <- 'uploaded'
     })
-    # browser()
+
+    # get image path
      imgs_path <- reactive({
       
         if (is.null(values$upload_state)) {
@@ -606,46 +616,104 @@ server <- function(input, output, session) {
         }
      })
     
-    
+     
+    # get utility values for splitting images into columns
     ipgmax <- reactive(input$num)
     num_col <- reactive(ipgmax()/2)
-    index <- reactive(seq(1,num_col()))
-    index2 <- reactive(seq(num_col()+1, num_col()*2))
     
-    
-    imgobj <- reactive ({
-     # isolate({
-      
-      all_dat <- dat_qc()
+    # get all image files
+    imgss <- reactive({
       imgss <- list.files(imgs_path(), pattern = '.tif', full.names = TRUE)
+    })
+    
+    # check which images are valid ROIs with associated CTD data
+    validroi <- reactive ({
+      all_dat <- dat_qc()
       
-      roi_ids <- vpr_roi(imgss)
+      imgdat <- imgss()
+      roi_ids <- vpr_roi(imgdat)
       roi_ids <- as.numeric(substr(roi_ids, 1, 8))
       validroi_ind <- which(roi_ids %in% all_dat$roi)
       validroi <- roi_ids[roi_ids %in% all_dat$roi]
       
+      # error if there are no valid rois
       validate(
         need(length(validroi) != 0, "No valid ROI images found")
       )
       
-      imgss <- imgss[validroi_ind]
+      return(validroi)
+    })
+    
+    # subset image files based on CTD data
+    img_valid <- reactive({
+        all_dat <- dat_qc()
+        roi_ids <- vpr_roi(imgss())
+        roi_ids <- as.numeric(substr(roi_ids, 1, 8))
+        
+        validroi_ind <- which(roi_ids %in% all_dat$roi)
+        imgdat <- imgss()
+        
+        img_valid <- imgdat[validroi_ind]
+    })
+    
+    # sort valid images based on user selection
+    sorted_index <- reactive({
       
-      imgss <- imgss[index()]
+      input$update
       
-      roi_id_string <- stringr::str_c(validroi, sep = ',')
+      isolate({
+      withProgress( message ='Sorting images...', { # adds progress bar
+        d <- exif_read(img_valid()) # check all images -- v slow
+        dimdat <- (d$ImageHeight + d$ImageWidth) /2 # calulate avg dimension
+        names(dimdat) <- d$FileName
+      })
       
-      image <- image_read(na.omit(imgss))
+        # get an ordered index 
+      if(isolate(input$sorting) == 'Small -> Large'){
+        sorted_index <- order(dimdat, decreasing = FALSE)
+      }else if(isolate(input$sorting) == 'Large -> Small'){
+        sorted_index <- order(dimdat, decreasing = TRUE)
+      } 
+      })
+    })
+    
+    # set colum 1 index based on sorted values or default
+    index <- reactive({
+      if(input$sorting == 'Time (default)'){
+        index <- seq(1, num_col())
+      } else{ # assumes only 3 options (default, lg - sm or sm- lg)
+        index <- sorted_index()[1:num_col()]
+      }
+    })
+
+    # set index for column 2
+    index2 <- reactive({
+      if(input$sorting == 'Time (default)'){
+        index2 <- seq(num_col()+1, num_col()*2)
+      } else{
+        index2 <- sorted_index()[num_col()+1: num_col()*2]
+      }
+    })
+    
+    # read in first column of images
+    imgobj <- reactive ({
+  
+      img1 <- img_valid()[index()]
+      
+      roi_id_string <- stringr::str_c(validroi(), sep = ',')
+      
+      image <- image_read(na.omit(img1))
       
       image <- image_annotate(image, roi_id_string, color = 'red', size = 15)
       
       image <- image_append(image_border(image, color = 'white', geometry = '10x8'), stack = TRUE)
       
     })
-    #})
-   
     
+   
+    # output first column of images
     output$image <- renderImage({
-      input$update
+      input$update # depends on update button
       isolate({
       tmpfile <- imgobj() %>%
             image_write(tempfile(fileext='png'), format = 'png')
@@ -655,27 +723,13 @@ server <- function(input, output, session) {
     }, deleteFile = FALSE)
    
     
-    
+    # read in second column of images
     imgobj2 <- reactive ({
-     # isolate ({
-      all_dat <- dat_qc()
-      imgss <- list.files(imgs_path(), pattern = '.tif', full.names = TRUE)
+     
+      img2 <- img_valid()[index2()]
+      roi_id_string <- stringr::str_c(validroi(), sep = ',')
       
-      roi_ids <- vpr_roi(imgss)
-      roi_id_string <- stringr::str_c(roi_ids, sep = ',')
-      
-      roi_ids <- as.numeric(substr(roi_ids, 1, 8))
-      validroi_ind <- which(roi_ids %in% all_dat$roi)
-      validroi <- roi_ids[roi_ids %in% all_dat$roi]
-      
-      validate(
-        need(length(validroi) != 0, "No valid ROI images found")
-      )
-      
-      imgss <- imgss[validroi_ind]
-      imgss <- imgss[index2()]
-      
-      image <- image_read(na.omit(imgss))
+      image <- image_read(na.omit(img2))
       
       image <- image_annotate(image, roi_id_string, color = 'red', size = 15)
       
@@ -684,9 +738,9 @@ server <- function(input, output, session) {
       
     })
   #  })
-    
+    # output second column of images
     output$image2 <- renderImage({
-      input$update
+      input$update # depends on update button
         
         isolate ({
         tmpfile <- imgobj2() %>%
@@ -695,9 +749,6 @@ server <- function(input, output, session) {
         list(src = tmpfile, contentType = "image/png")
         })
     }, deleteFile = FALSE)
-    
-    
-    
     
 }
 
