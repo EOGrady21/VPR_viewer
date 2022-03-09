@@ -167,8 +167,12 @@ Shiny.onInputChange('shiny_height',myHeight)
                                    # TS plot
                                    column(3, offset = 9,
                                           downloadButton('save5', label = 'Save')),
-                                   column(12, plotOutput('plot5'))
-                                   
+                                   column(12, plotOutput('plot5')),
+                                   # binned cast
+                                   column(3, offset = 9,
+                                          downloadButton('save6', label = 'Save')),
+                                   column(12, plotOutput('plot6'))
+
                                  )), 
                         tabPanel("Summary", verbatimTextOutput("summary")),
                         tabPanel("Table", DT::dataTableOutput("ctdroi")),
@@ -913,6 +917,39 @@ server <- function(input, output, session) {
       }
     )
     
+    
+    # plot casts
+    
+    cast_plot <- function(){
+      isolate({
+        dat <- binnedData()
+      ggplot(dat) +
+        geom_point(aes(x = avg_hr, y = depth, col = towyo)) +
+        scale_y_reverse(name = 'Depth [m]') +
+        scale_x_continuous(name = 'Time [hr]')+
+        scale_color_discrete(name = 'Cast Identifier') +
+        ggtitle('Binned Casts')+
+        theme(panel.background = element_blank(),
+              panel.grid = element_blank(),
+              plot.title = element_text(size = 28))
+      })
+    }
+
+    output$plot6 <- renderPlot({
+      input$update
+      cast_plot()
+    })
+    # 
+    output$save6 <- downloadHandler(
+      filename = paste0(input$cruise, "_VPR", input$tow, "_d", input$day, "_h", input$hour, "_cast_plot.png"),
+      content = function(file) {
+        png(file,
+            width = input$shiny_width,
+            height = input$shiny_height)
+        cast_plot()
+        dev.off()
+      }
+    )
     ##ROI images
 
     shinyDirChoose(input, 'dir',roots = c('C:/' = 'C:/', 'D:/' = 'D:/', 'E:/' = 'E:/', 'F:/' = 'F:/'  )  )
