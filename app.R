@@ -15,6 +15,7 @@ dark <-  bs_theme(bootswatch = 'superhero')
 ui <- fluidPage(
   
  #debugging
+  # console command : $('#browser').show();
   actionButton("browser", "browser"),
   tags$script("$('#browser').hide();"),
  
@@ -140,7 +141,7 @@ Shiny.onInputChange('shiny_height',myHeight)
                                    column(6,
                                    pickerInput(inputId = 'sorting', label = 'Image Sorting',
                                           choices = list('Time (default)', 'Small -> Large', 'Large -> Small'),
-                                          selected = 'Small -> Large') %>%
+                                          selected = 'Time (default)') %>% # set default
                                    helper(content = 'image_sorting')
                                    )
                                    ),
@@ -737,8 +738,8 @@ server <- function(input, output, session) {
       image <- image_append(image_border(image, color = 'white'), stack = TRUE)
       
     })
-  #  })
-    # output second column of images
+
+        # output second column of images
     output$image2 <- renderImage({
       input$update # depends on update button
         
@@ -751,8 +752,6 @@ server <- function(input, output, session) {
     }, deleteFile = FALSE)
     
 }
-
-
 
 
 shinyApp(ui, server)
