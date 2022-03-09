@@ -1,5 +1,5 @@
 suppressWarnings(librarian::shelf(shiny, vprr, magick, ggplot2, metR, dplyr, DT, base64enc, shinyFiles, bslib, thematic,
-                 shinyWidgets, shinyhelper, spelling, exiftoolr, quiet = TRUE))
+                 shinyWidgets, shinyhelper, spelling, exiftoolr, oce, quiet = TRUE))
 
 # install exiftool to check image metadata
 # required when run on new machine
@@ -108,27 +108,68 @@ Shiny.onInputChange('shiny_height',myHeight)
         mainPanel(
             # Output: Tabset w/ plot, summary, and table ----
             tabsetPanel(type = "tabs",
-                        tabPanel("Plot", 
-                                 fluidRow(
-                                     column(3, offset = 9,
-                                            downloadButton('save1', label = 'Save') %>%
-                                              helper(content = 'save'))
+                        tabPanel("CTD Plot", 
+                                 # ctd path plot
+                                 fluidRow(column(3, offset = 9,
+                                          downloadButton('ctdsave1', label = 'Save') %>%
+                                            helper(content = 'save'))
                                  ),
                                  fluidRow(
-                                     column(12, plotOutput("plot")),
-                                     column(3, offset = 9,
-                                            downloadButton('save2', label = 'Save')
-                                     ),
-                                     column(12, plotOutput('plot2')),
-                                     column(3, offset = 9,
-                                            downloadButton('save3', label = 'Save')
-                                     ),
-                                     column(12, plotOutput('plot3')),
-                                     column(3, offset = 9,
-                                            downloadButton('save4', label = 'Save')
-                                     ),
-                                     column(12, plotOutput('plot4')),
+                                   column(12, plotOutput("ctdplot"))
+                                 ),
+                                 fluidRow(
+                                   # ctd profiles
+                                   column(3, offset = 9,
+                                          downloadButton('ctdsave2_3', label = 'Save')),
+                                   column(6, plotOutput("ctdplot2")),
+                                   column(6, plotOutput("ctdplot3"))
+                                 ),
+                                 fluidRow(
+                                   column(3, offset = 9,
+                                          downloadButton('ctdsave4', label = 'Save')),
+                                   # temperature contour
+                                   column(12, plotOutput("ctdplot4"))
+                                 ),
+                                 fluidRow(
+                                   column(3, offset = 9,
+                                          downloadButton('ctdsave5', label = 'Save')),
+                                   #salinity contour
+                                   column(12, plotOutput("ctdplot5"))
+                                 ),
+                                 fluidRow(
+                                   column(3, offset = 9,
+                                          downloadButton('ctdsave6', label = 'Save')),
+                                   # TS plot
+                                   column(6, offset = 3, plotOutput("ctdplot6", width = 800, height = 800))
+                                 )
+                                 ),
+                        
+                        tabPanel("VPR Plot", 
+                                 # profile plots
+                                 fluidRow(column( 3, offset = 9,
+                                   downloadButton('save1', label = 'Save') %>%
+                                     helper(content = 'save')
                                  )),
+                                 fluidRow(
+                                   column(12, plotOutput("plot")),
+                                   # concentration interpolation
+                                   column(3, offset = 9,
+                                          downloadButton('save2', label = 'Save')),
+                                   column(12, plotOutput('plot2')),
+                                   # temperature interpolation
+                                   column(3, offset = 9,
+                                          downloadButton('save3', label = 'Save')),
+                                   column(12, plotOutput('plot3')),
+                                   # salinity interpolation
+                                   column(3, offset = 9,
+                                          downloadButton('save4', label = 'Save')),
+                                   column(12, plotOutput('plot4')),
+                                   # TS plot
+                                   column(3, offset = 9,
+                                          downloadButton('save5', label = 'Save')),
+                                   column(12, plotOutput('plot5'))
+                                   
+                                 )), 
                         tabPanel("Summary", verbatimTextOutput("summary")),
                         tabPanel("Table", DT::dataTableOutput("ctdroi")),
                         tabPanel("Images",
@@ -172,14 +213,15 @@ server <- function(input, output, session) {
     
     observe_helpers()
     
-    datasetInput <- reactive({
-        
+    
+      ctd_dat <- reactive({
         req(input$ctd_files)
         
         ctd_fns <- input$ctd_files
         
         ctd_dat <- vpr_ctd_read(ctd_fns$datapath, station_of_interest = input$station, day = input$day, hour = input$hour)
         
+        ctd_dat$avg_hr <- ctd_dat$time_ms / 3.6e+06
         # check metadata 
         # ONLY CHECKS HOUR, DEV REQ
         # TO DO: Check day, tow and cruise
@@ -187,6 +229,273 @@ server <- function(input, output, session) {
            need(vpr_hour(input$ctd_files)$name == paste0('h',input$hour), "Please correct metadata! (Incorrect hour)")
            )
         )
+        
+        return(ctd_dat)
+      })
+        
+      ctd_TS_profile_plot <- function(){
+        isolate({
+          p <- ggplot(ctd_dat()) +
+            geom_point(aes(x = temperature, y = depth), col = 'red') +
+            scale_y_reverse(name = 'Pressure [db]', limits = c(max(ctd_dat()$pressure)+2, 0))
+          # plot salinity
+          p_TS <- p + geom_point(aes(x = (salinity -25), y = depth), col = 'blue') +
+            scale_x_continuous(name = expression(paste("Temperature [",degree,"C]")),sec.axis = sec_axis(~ . +25, name = 'Salinity [PSU]')) +
+            theme(axis.line.x.bottom = element_line(colour = 'red'),
+                  axis.ticks.x.bottom = element_line(colour = 'red'),
+                  panel.background = element_blank(),
+                  panel.grid = element_blank(),
+                  axis.line.y = element_line(linetype = 'solid'),
+                  axis.line.x.top = element_line(colour = 'blue'),
+                  axis.ticks.x.top = element_line(colour = 'blue'),
+                  axis.title = element_text(size = 24), 
+                  plot.title = element_text(size = 28),
+                  axis.text = element_text(size = 20),
+                  strip.text = element_text(size = 20)
+            ) +
+            ggtitle('CTD temperature and salinity') 
+          
+          return(p_TS)
+        })
+      }
+      ctd_FD_profile_plot <- function(){
+        isolate({
+          p <- ggplot(ctd_dat()) +
+            geom_point(aes(x = fluorescence_mv, y = depth), col = 'green') +
+            scale_y_reverse(name = 'Pressure [db]', limits = c(max(ctd_dat()$pressure)+2, 0))
+          
+          # plot density
+          p_FD <- p + geom_point(aes(x = (sigmaT  -20) * 20, y = depth)) +
+            scale_x_continuous(name = 'Fluorescence [mv]',sec.axis = sec_axis(~. /20   +20, name = 'Density')) +
+            theme(axis.line.x.bottom = element_line(colour = 'green'),
+                  axis.ticks.x.bottom = element_line(colour = 'green'),
+                  panel.background = element_blank(),
+                  panel.grid = element_blank(),
+                  axis.line.y = element_line(linetype = 'solid'),
+                  axis.line.x.top = element_line(colour = 'black'),
+                  axis.title = element_text(size = 24), 
+                  plot.title = element_text(size = 28),
+                  axis.text = element_text(size = 20), 
+                  strip.text = element_text(size = 20)
+            ) +
+            ggtitle('CTD fluorescence and density')
+          
+          return(p_FD)
+          
+        })
+      }
+        
+        ctd_path_plot <- function(){
+          isolate({
+            
+            ggplot(data = ctd_dat() ) +
+              geom_point(aes(avg_hr, pressure)) +
+              scale_x_continuous(name = 'Time [hr]') +
+              scale_y_reverse(name = 'Pressure [db]') + 
+              ggtitle(label = 'CTD/ VPR Path') + 
+              theme(
+                panel.background = element_blank(),
+                panel.grid = element_blank(),
+                plot.title = element_text(size = 28))
+              
+            
+          })
+        
+        }
+        
+        ctd_t_contour <- function(){
+          isolate({
+            d <- ctd_dat()
+
+          #temperature
+          #interpolate data
+          ctd_int <- interp::interp(x = d$avg_hr, y = d$depth, z = d$temperature, duplicate= 'strip')
+          
+          #plot
+          #set consistent x and y limits
+          y_limits <- rev(range(ctd_int$y))
+          x_limits <- range(input$hr_range)
+          
+          if(max(x_limits) > max(d$avg_hr)){
+            x_limits[2] <- max(d$avg_hr)
+          }
+          
+          if(min(x_limits) < min(d$avg_hr)){
+            x_limits[1] <- min(d$avg_hr)
+          }
+          
+          cmpalf <- cmocean::cmocean('thermal')
+          #make contour plot
+          filled.contour(ctd_int$x, ctd_int$y, ctd_int$z, nlevels = 50,
+                         color.palette = cmpalf,
+                         #color.palette = colorRampPalette(c( "blue", 'red')),
+                         ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Interpolated Temperature',
+                         #add anotations
+                         plot.axes = {
+                           #add bubbles
+                          # points(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, pch = ".")
+                           #add vpr path
+                           points(d$avg_hr, d$depth, type = 'l')
+                           #add axes
+                           axis(1)
+                           axis(2)
+                           #add contour lines
+                           contour(ctd_int$x, ctd_int$y, ctd_int$z, nlevels=10, add = T)
+                           #enlarge bubble size based on concentration
+                          # symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
+                          #         fg = "darkgrey", bg = "grey", inches = 0.3, add = T)
+                         }) 
+          })
+        }
+        
+        ctd_s_contour <- function(){
+          isolate({
+            
+            d <- ctd_dat()
+
+            #salinity
+            #interpolate data
+            ctd_int <- interp::interp(x = d$avg_hr, y = d$depth, z = d$salinity, duplicate= 'strip')
+            
+            #plot
+            #set consistent x and y limits
+            y_limits <- rev(range(ctd_int$y))
+            x_limits <- range(input$hr_range)
+            
+            if(max(x_limits) > max(d$avg_hr)){
+              x_limits[2] <- max(d$avg_hr)
+            }
+            
+            if(min(x_limits) < min(d$avg_hr)){
+              x_limits[1] <- min(d$avg_hr)
+            }
+            cmpalf <- cmocean::cmocean('haline')
+            #make contour plot
+            filled.contour(ctd_int$x, ctd_int$y, ctd_int$z, nlevels = 50,
+                           color.palette = cmpalf,
+                           #color.palette = colorRampPalette(c( "blue", 'red')),
+                           ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Interpolated Salinity',
+                           #add annotations
+                           plot.axes = {
+                             #add bubbles
+                             # points(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, pch = ".")
+                             #add vpr path
+                             points(d$avg_hr , d$depth, type = 'l')
+                             #add axes
+                             axis(1)
+                             axis(2)
+                             #add contour lines
+                             contour(ctd_int$x, ctd_int$y, ctd_int$z, nlevels=10, add = T)
+                             #enlarge bubbles based on concentration
+                             # symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
+                             #         fg = "darkgrey", bg = "grey", inches = 0.3, add = T)
+                           })
+          })
+        }
+        
+        ctd_TS <- function() {
+          isolate({
+            
+            ctd_oce <- vpr_oce_create(ctd_dat())
+            
+            plot(ctd_oce)
+          })
+        }
+        
+      output$ctdplot <- renderPlot({
+        input$update
+        
+        ctd_path_plot()
+      })
+      
+      output$ctdsave1 <- downloadHandler(
+        filename = paste0(input$cruise, "_CTD", input$tow, "_d", input$day, "_h", input$hour, "_path_plot.png"), 
+        content = function(file) {
+          png(file,
+              width = input$shiny_width,
+              height = input$shiny_height)
+          ctd_path_plot()
+          dev.off()
+        }
+      )
+      
+      output$ctdplot2 <- renderPlot({
+        input$update
+        
+        ctd_TS_profile_plot()
+      })
+      
+      
+      output$ctdplot3 <- renderPlot({
+        input$update
+        
+        ctd_FD_profile_plot()
+      })
+      
+      output$ctdsave2_3 <- downloadHandler(
+        filename = paste0(input$cruise, "_CTD", input$tow, "_d", input$day, "_h", input$hour, "_profile_plot.png"), 
+        content = function(file) {
+          png(file,
+              width = input$shiny_width,
+              height = input$shiny_height)
+          gridExtra::grid.arrange(ctd_TS_profile_plot(), ctd_FD_profile_plot(), nrow = 1)
+          dev.off()
+        }
+      )
+        
+      output$ctdplot4 <- renderPlot({
+        input$update
+        
+        ctd_t_contour()
+      })
+      
+      output$ctdsave4 <- downloadHandler(
+        filename = paste0(input$cruise, "_CTD", input$tow, "_d", input$day, "_h", input$hour, "_temp_contour_plot.png"), 
+        content = function(file) {
+          png(file,
+              width = input$shiny_width,
+              height = input$shiny_height)
+          ctd_t_contour()
+          dev.off()
+        }
+      )
+      
+      output$ctdplot5 <- renderPlot({
+        input$update
+        
+        ctd_s_contour()
+      })
+      
+      output$ctdsave5 <- downloadHandler(
+        filename = paste0(input$cruise, "_CTD", input$tow, "_d", input$day, "_h", input$hour, "_sal_contour_plot.png"), 
+        content = function(file) {
+          png(file,
+              width = input$shiny_width,
+              height = input$shiny_height)
+          ctd_s_contour()
+          dev.off()
+        }
+      )
+      
+      output$ctdplot6 <- renderPlot({
+        input$update
+        
+        ctd_TS()
+      })
+      
+      output$ctdsave6 <- downloadHandler(
+        filename = paste0(input$cruise, "_CTD", input$tow, "_d", input$day, "_h", input$hour, "_TS_plot.png"), 
+        content = function(file) {
+          png(file,
+              width = input$shiny_width,
+              height = input$shiny_height)
+          ctd_TS()
+          dev.off()
+        }
+      )
+        
+        datasetInput <- reactive({
+          ctd_dat <- ctd_dat()
         
         #vpr_oce_create(ctd_dat)
         #get ROI data
@@ -577,6 +886,31 @@ server <- function(input, output, session) {
             plot_concsal()
             dev.off()
         }
+    )
+    
+    roi_ts_plot <- function(){
+      isolate({
+        
+        dat <- binnedData()
+        vpr_plot_TS(x = dat, var = "conc_m3")
+      })
+    }
+    
+    output$plot5 <- renderPlot({
+      input$update
+      roi_ts_plot()
+      
+    })
+    
+    output$save5 <- downloadHandler(
+      filename = paste0(input$cruise, "_VPR", input$tow, "_d", input$day, "_h", input$hour, "_TSroi_plot.png"), 
+      content = function(file) {
+        png(file,
+            width = input$shiny_width,
+            height = input$shiny_height)
+        roi_ts_plot()
+        dev.off()
+      }
     )
     
     ##ROI images
