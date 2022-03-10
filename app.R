@@ -42,7 +42,7 @@ dark <-  bs_theme(bootswatch = 'superhero')
   });"
     ), 
 
-  titlePanel("Plankton Plotter"),
+  titlePanel("VPR Viewer"),
 # * Side bar layout ----
     sidebarLayout(
         sidebarPanel(
