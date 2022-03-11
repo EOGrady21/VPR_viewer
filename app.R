@@ -15,6 +15,9 @@ thematic_shiny() #theme plots to match bs_theme() argument
 light <- bs_theme(bootswatch = 'zephyr')
 dark <-  bs_theme(bootswatch = 'superhero')
 
+# Cache ----
+# shinyOptions(cache = cachem::cache_disk(file.path(dirname(tempdir()), "vprv-cache")))
+             
 # UI -------------------------------------------------------------------------------------------
 {ui <- fluidPage(
 
@@ -971,15 +974,27 @@ server <- function(input, output, session) {
         img_valid <- imgdat[validroi_ind]
     })
     
+    # get image metadata
+    d <- reactive({
+     # input$update # attempt to only update when necessary
+      isolate({
+        withProgress(message ='Sorting images...', { # adds progress bar
+          d <- exif_read(img_valid())
+          }) # check all images -- v slow
+      })
+    }) # %>%
+   # bindCache(d()) # work on caching solution
+    
     # sort valid images based on user selection
     sorted_index <- reactive({
       input$update
       isolate({
-        withProgress( message ='Sorting images...', { # adds progress bar
-          d <- exif_read(img_valid()) # check all images -- v slow
-          dimdat <- (d$ImageHeight + d$ImageWidth) /2 # calulate avg dimension
-          names(dimdat) <- d$FileName
-          })
+        # withProgress( message ='Sorting images...', { # adds progress bar
+        #   d <- exif_read(img_valid()) %>% # check all images -- v slow
+        #     bindCache(d)
+          dimdat <- (d()$ImageHeight + d()$ImageWidth) /2 # calulate avg dimension
+          names(dimdat) <- d()$FileName
+          # })
       
         # get an ordered index 
       if(isolate(input$sorting) == 'Small -> Large'){
