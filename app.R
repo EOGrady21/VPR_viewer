@@ -1,6 +1,6 @@
 # Library -----
 suppressWarnings(librarian::shelf(shiny, vprr, magick, ggplot2, metR, dplyr, DT, base64enc, shinyFiles, bslib, thematic,
-                 shinyWidgets, shinyhelper, spelling, exiftoolr, oce, gridExtra, quiet = TRUE))
+                 shinyWidgets, shinyhelper, spelling, exiftoolr, oce, gridExtra, waiter, quiet = TRUE))
 
 # ExifTool -----
 # install exiftool to check image metadata
@@ -20,6 +20,7 @@ dark <-  bs_theme(bootswatch = 'superhero', version = '5')
              
 # UI -------------------------------------------------------------------------------------------
 {ui <- fluidPage(
+  waiter::use_waiter(),
 
 # * Debugging ----
   # console command : $('#browser').show();
@@ -53,7 +54,8 @@ dark <-  bs_theme(bootswatch = 'superhero', version = '5')
             fluidRow(
                 column(3, offset = 5,
                        actionButton('update', label = 'Update', icon(name = 'refresh', lib = 'glyphicon')) %>%
-                         helper(content = 'update'))
+                         helper(content = 'update')
+                )
                 ),
           
             fileInput('ctd_files', label = 'CTD Files', multiple = FALSE, accept = '.dat') %>%
@@ -223,6 +225,14 @@ server <- function(input, output, session) {
     
 # * Load CTD data ----    
       ctd_dat <- reactive({
+        # add loading icons
+        waiter::Waiter$new(id = "ctdplot", color = 'blue')$show()
+        waiter::Waiter$new(id = "ctdplot2", color = 'blue')$show()
+        waiter::Waiter$new(id = "ctdplot3", color = 'blue')$show()
+        waiter::Waiter$new(id = "ctdplot4", color = 'blue')$show()
+        waiter::Waiter$new(id = "ctdplot5", color = 'blue')$show()
+        waiter::Waiter$new(id = "ctdplot6", color = 'blue')$show()
+
         req(input$ctd_files)
         
         ctd_fns <- input$ctd_files
@@ -542,6 +552,13 @@ server <- function(input, output, session) {
     
     # Bin VPR and CTD data
     binnedData <- reactive({
+      # add loading icons
+      waiter::Waiter$new(id = "plot", color = 'blue')$show()
+      waiter::Waiter$new(id = "plot2", color = 'blue')$show()
+      waiter::Waiter$new(id = "plot3", color = 'blue')$show()
+      waiter::Waiter$new(id = "plot4", color = 'blue')$show()
+      waiter::Waiter$new(id = "plot5", color = 'blue')$show()
+      waiter::Waiter$new(id = "plot6", color = 'blue')$show()
 
         all_dat <- datasetInput()
         
@@ -552,6 +569,7 @@ server <- function(input, output, session) {
     
     # filter data by time
     dat_qc <- reactive({
+      
         all_dat <- datasetInput()
         
         all_dat_q <- all_dat %>%
@@ -1025,6 +1043,9 @@ server <- function(input, output, session) {
     
     # read in first column of images
     imgobj <- reactive ({
+      # add loading icon
+      waiter::Waiter$new(id = "image", color = 'blue')$show()
+      
       img1 <- img_valid()[index()]
       roi_id_string <- stringr::str_c(validroi(), sep = ',')
       image <- image_read(na.omit(img1))
@@ -1034,6 +1055,9 @@ server <- function(input, output, session) {
     
     # read in second column of images
     imgobj2 <- reactive ({
+      # add loading icon
+      waiter::Waiter$new(id = "image2", color = 'blue')$show()
+      
       img2 <- img_valid()[index2()]
       roi_id_string <- stringr::str_c(validroi(), sep = ',')
       image <- image_read(na.omit(img2))
