@@ -12,8 +12,8 @@ if(is_exiftool_available() == FALSE){install_exiftool()}
 
 # Theme -----
 thematic_shiny() #theme plots to match bs_theme() argument
-light <- bs_theme(bootswatch = 'zephyr')
-dark <-  bs_theme(bootswatch = 'superhero')
+light <- bs_theme(bootswatch = 'zephyr', version = 5)
+dark <-  bs_theme(bootswatch = 'superhero', version = '5')
 
 # Cache ----
 # shinyOptions(cache = cachem::cache_disk(file.path(dirname(tempdir()), "vprv-cache")))
