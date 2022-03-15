@@ -97,17 +97,13 @@ dark <-  bs_theme(bootswatch = 'superhero')
 
             ##OPTIONAL QC PARAMETERS##
             
-            sliderInput("sal_range", label = h3("Salinity Range"), min = 15, 
-                        max = 45, value = c(28, 35)),
+            numericRangeInput("sal_range", label = h3("Salinity Range"), value = c(28, 35)),
             
-            sliderInput("temp_range", label = h3("Temperature Range"), min = 0, 
-                        max = 30, value = c(0, 15)),
+            numericRangeInput("temp_range", label = h3("Temperature Range"), value = c(0, 15)),
             
-            sliderInput("pres_range", label = h3("Pressure Range"), min = 0, 
-                        max = 500, value = c(0, 500)),
+            numericRangeInput("pres_range", label = h3("Pressure Range"), value = c(0, 500)),
             
-            sliderInput("hr_range", label = h3("Time Range (hr)"), min = 0, 
-                        max = 24, value = c(0, 24), step = 0.1)
+            numericRangeInput("hr_range", label = h3("Time Range (hr)"), value = c(0, 24), step = 0.1)
         ),
         
 # * Main panel layout ----        
@@ -240,6 +236,7 @@ server <- function(input, output, session) {
         ctd_dat <- vpr_ctd_read(ctd_fns$datapath, station_of_interest = input$station, day = input$day, hour = input$hour)
         
         ctd_dat$avg_hr <- ctd_dat$time_ms / 3.6e+06
+        
         # check metadata 
         # ONLY CHECKS HOUR, DEV REQ
         # TO DO: Check day, tow and cruise
@@ -250,7 +247,41 @@ server <- function(input, output, session) {
         
         return(ctd_dat)
       })
-
+# * Set Q ranges ----
+    # salinity
+    observeEvent(input$update, {
+      updateNumericRangeInput(session,
+                              inputId = 'sal_range',
+                              value = c(floor(min(ctd_dat()$salinity, na.rm = TRUE)),
+                                        ceiling(max(ctd_dat()$salinity, na.rm = TRUE))) 
+                              )
+    })
+    # temperature
+    observeEvent(input$update, {
+      updateNumericRangeInput(session,
+                              inputId = 'temp_range',
+                              value = c(floor(min(ctd_dat()$temperature, na.rm = TRUE)),
+                                        ceiling(max(ctd_dat()$temperature, na.rm = TRUE))) 
+      )
+    })
+    #pressure
+    observeEvent(input$update, {
+      updateNumericRangeInput(session,
+                              inputId = 'pres_range',
+                              value = c(floor(min(ctd_dat()$pressure, na.rm = TRUE)),
+                                        ceiling(max(ctd_dat()$pressure, na.rm = TRUE))) 
+      )
+    })
+    # hr range
+    ceiling_dec <- function(x, level=1) round(x + 5*10^(-level-1), level)
+    observeEvent(input$update, {
+      mval <- max(ctd_dat()$avg_hr) - min(ctd_dat()$avg_hr)
+      updateNumericRangeInput(session,
+                              inputId = 'hr_range',
+                              value = c(0,
+                                        ceiling_dec(mval, 1))
+      )
+    })
 # * CTD plotting functions ----       
       ctd_TS_profile_plot <- function(){
         isolate({
@@ -306,7 +337,9 @@ server <- function(input, output, session) {
         
       ctd_path_plot <- function(){
           isolate({
-            ggplot(data = ctd_dat() ) +
+            ctd_dat <- ctd_dat() %>%
+              dplyr::mutate(., avg_hr = avg_hr - min(avg_hr, na.rm = TRUE))
+            ggplot(data = ctd_dat ) +
               geom_point(aes(avg_hr, pressure)) +
               scale_x_continuous(name = 'Time [hr]') +
               scale_y_reverse(name = 'Pressure [db]') + 
@@ -324,6 +357,9 @@ server <- function(input, output, session) {
             d <- ctd_dat()
             ctd_int <- interp::interp(x = d$avg_hr, y = d$depth, z = d$temperature, duplicate= 'strip')
 
+            ctd_int$x <- ctd_int$x - min(ctd_int$x)
+            d$avg_hr <- d$avg_hr - min(d$avg_hr)
+            
             #set consistent x and y limits
             y_limits <- rev(range(ctd_int$y))
             x_limits <- range(input$hr_range)
@@ -357,9 +393,11 @@ server <- function(input, output, session) {
       ctd_s_contour <- function(){
           isolate({
             d <- ctd_dat()
-
             #interpolate data
             ctd_int <- interp::interp(x = d$avg_hr, y = d$depth, z = d$salinity, duplicate= 'strip')
+            
+            ctd_int$x <- ctd_int$x - min(ctd_int$x)
+            d$avg_hr <- d$avg_hr - min(d$avg_hr)
             
             #set consistent x and y limits
             y_limits <- rev(range(ctd_int$y))
@@ -809,10 +847,12 @@ server <- function(input, output, session) {
     }
     
     cast_plot <- function(){
+      # TO DO: This plot doesn't propogate the time subset values 
+      #(subset happens only to dat_qc() - which doesn't get binned)
       isolate({
         dat <- binnedData()
         ggplot(dat) +
-          geom_point(aes(x = avg_hr, y = depth, col = towyo)) +
+          geom_point(aes(x = avg_hr, y = depth, col = towyo), size = 4) +
           scale_y_reverse(name = 'Depth [m]') +
           scale_x_continuous(name = 'Time [hr]')+
           scale_color_discrete(name = 'Cast Identifier') +
