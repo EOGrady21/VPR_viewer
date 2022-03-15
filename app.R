@@ -20,6 +20,7 @@ dark <-  bs_theme(bootswatch = 'superhero')
              
 # UI -------------------------------------------------------------------------------------------
 {ui <- fluidPage(
+  waiter::use_waiter(),
 
 # * Debugging ----
   # console command : $('#browser').show();
@@ -53,7 +54,8 @@ dark <-  bs_theme(bootswatch = 'superhero')
             fluidRow(
                 column(3, offset = 5,
                        actionButton('update', label = 'Update', icon(name = 'refresh', lib = 'glyphicon')) %>%
-                         helper(content = 'update'))
+                         helper(content = 'update')
+                )
                 ),
           
             fileInput('ctd_files', label = 'CTD Files', multiple = FALSE, accept = '.dat') %>%
@@ -220,9 +222,19 @@ server <- function(input, output, session) {
     ))
     
     observe_helpers()
+
+    # updt <- eventReactive(input$update, {
+    #   waiter <- waiter::Waiter$new()
+    #   waiter$show()
+    #   on.exit(waiter$hide())
+    #   
+    #   input$update
+    # })
     
 # * Load CTD data ----    
       ctd_dat <- reactive({
+        waiter::Waiter$new(id = "ctdplot")$show()
+        
         req(input$ctd_files)
         
         ctd_fns <- input$ctd_files
