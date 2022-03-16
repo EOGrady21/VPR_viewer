@@ -625,7 +625,7 @@ server <- function(input, output, session) {
             dplyr::filter(., pressure < max(input$pres_range)) 
         
         validate(
-          need(length(all_dat$time_ms) > 5, 'Less than 5 valid data points available in your desired QC range! Please expand!')
+          need(length(all_dat$time_ms) > 150, 'Too few valid data points available in your desired QC range! Please expand!')
         )
         
         return(all_dat)
@@ -659,7 +659,7 @@ server <- function(input, output, session) {
             dplyr::filter(., avg_hr > min(input$hr_range))
 
         validate(
-          need(length(all_dat_q$time_ms) > 5, 'Less than 5 valid data points available in your desired time range! Please expand!')
+          need(length(all_dat_q$time_ms) > 150, 'Too few valid data points available in your desired time range! Please expand!')
         )
         return(all_dat_q)
     })
@@ -732,6 +732,10 @@ server <- function(input, output, session) {
             vpr_sel <- vpr_depth_bin %>%
                 dplyr::filter(., avg_hr < max(input$hr_range)) %>%
                 dplyr::filter(., avg_hr > min(input$hr_range))
+            
+            validate(
+              need(length(vpr_sel$avg_hr) > 25, "Too few valid data points in selected time range! Please expand!")
+            )
 
             vpr_plot_profile(taxa_conc_n = vpr_sel, taxa_to_plot = NULL, plot_conc = TRUE)
             
@@ -751,6 +755,10 @@ server <- function(input, output, session) {
         sel_dat <- all_dat %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
+        
+        validate(
+          need(length(vpr_sel_bin$avg_hr) > 25, "Too few valid data points in selected time range! Please expand!")
+        )
         
         #interpolate data
         vpr_int <- akima::interp(x = vpr_depth_bin$avg_hr, y = vpr_depth_bin$depth, z = vpr_depth_bin$conc_m3, duplicate= 'strip')
@@ -799,6 +807,10 @@ server <- function(input, output, session) {
         sel_dat <- all_dat %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
+        
+        validate(
+          need(length(vpr_sel_bin$avg_hr) > 25, "Too few valid data points in selected time range! Please expand!")
+        )
         
         #interpolate data
         vpr_int <- akima::interp(x = vpr_depth_bin$avg_hr, y = vpr_depth_bin$depth, z = vpr_depth_bin$temperature, duplicate= 'strip')
@@ -850,6 +862,10 @@ server <- function(input, output, session) {
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
         
+        validate(
+          need(length(vpr_sel_bin$avg_hr) > 25, "Too few valid data points in selected time range! Please expand!")
+        )
+        
         vpr_int <- akima::interp(x = vpr_depth_bin$avg_hr, y = vpr_depth_bin$depth, z = vpr_depth_bin$salinity, duplicate = 'strip')
         
         #set consistent x and y limits
@@ -888,16 +904,20 @@ server <- function(input, output, session) {
     roi_ts_plot <- function(){
       isolate({
         dat <- binnedData()
-        vpr_plot_TS(x = dat, var = "conc_m3")
+        dat_f <- dat %>%
+          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
+          dplyr::filter(., avg_hr > min(input$hr_range))
+        vpr_plot_TS(x = dat_f, var = "conc_m3")
       })
     }
     
     cast_plot <- function(){
-      # TO DO: This plot doesn't propogate the time subset values 
-      #(subset happens only to dat_qc() - which doesn't get binned)
       isolate({
         dat <- binnedData()
-        ggplot(dat) +
+        dat_f <- dat %>%
+          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
+          dplyr::filter(., avg_hr > min(input$hr_range))
+        ggplot(dat_f) +
           geom_point(aes(x = avg_hr, y = depth, col = towyo), size = 4) +
           scale_y_reverse(name = 'Depth [m]') +
           scale_x_continuous(name = 'Time [hr]')+
