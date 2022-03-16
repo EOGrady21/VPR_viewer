@@ -97,6 +97,8 @@ dark <-  bs_theme(bootswatch = 'superhero', version = '5')
 
             ##OPTIONAL QC PARAMETERS##
             
+            actionBttn('reset', label = 'Reset Ranges', style = 'jelly', icon(name = 'remove', lib = 'glyphicon')),
+            
             numericRangeInput("sal_range", label = h3("Salinity Range"), value = c(28, 35)),
             
             numericRangeInput("temp_range", label = h3("Temperature Range"), value = c(0, 15)),
@@ -218,17 +220,13 @@ server <- function(input, output, session) {
     ))
     
     observe_helpers()
+    # helper function
+    ceiling_dec <- function(x, level=1) round(x + 5*10^(-level-1), level)
+    
     
 # * Load CTD data ----    
       ctd_dat <- reactive({
-        # add loading icons
-        waiter::Waiter$new(id = "ctdplot", color = 'blue')$show()
-        waiter::Waiter$new(id = "ctdplot2", color = 'blue')$show()
-        waiter::Waiter$new(id = "ctdplot3", color = 'blue')$show()
-        waiter::Waiter$new(id = "ctdplot4", color = 'blue')$show()
-        waiter::Waiter$new(id = "ctdplot5", color = 'blue')$show()
-        waiter::Waiter$new(id = "ctdplot6", color = 'blue')$show()
-
+       
         req(input$ctd_files)
         
         ctd_fns <- input$ctd_files
@@ -247,41 +245,82 @@ server <- function(input, output, session) {
         
         return(ctd_dat)
       })
-# * Set Q ranges ----
-    # salinity
+    
     observeEvent(input$update, {
-      updateNumericRangeInput(session,
+      # add loading icons
+      waiter::Waiter$new(id = "ctdplot", color = 'blue')$show()
+      waiter::Waiter$new(id = "ctdplot2", color = 'blue')$show()
+      waiter::Waiter$new(id = "ctdplot3", color = 'blue')$show()
+      waiter::Waiter$new(id = "ctdplot4", color = 'blue')$show()
+      waiter::Waiter$new(id = "ctdplot5", color = 'blue')$show()
+      waiter::Waiter$new(id = "ctdplot6", color = 'blue')$show()
+    })
+# * Set Q ranges ----
+    observeEvent(input$ctd_files,{
+      # reset ranges between files (default ranges - avoid cutting off data based on previous set)
+      updateNumericRangeInput(session, 
+                              inputId = 'sal_range',
+                              value = c(28, 35))
+      updateNumericRangeInput(session, 
+                              inputId = 'temp_range',
+                              value = c(0, 30))
+      updateNumericRangeInput(session, 
+                              inputId = 'pres_range',
+                              value = c(0, 500))
+      updateNumericRangeInput(session, 
+                              inputId = 'hr_range',
+                              value = c(0, 24))
+    })
+    observeEvent(input$reset,{
+      #reset ranges to full data (reset button)
+      updateNumericRangeInput(session, 
                               inputId = 'sal_range',
                               value = c(floor(min(ctd_dat()$salinity, na.rm = TRUE)),
-                                        ceiling(max(ctd_dat()$salinity, na.rm = TRUE))) 
-                              )
-    })
-    # temperature
-    observeEvent(input$update, {
+                                        ceiling(max(ctd_dat()$salinity, na.rm = TRUE))))
       updateNumericRangeInput(session,
                               inputId = 'temp_range',
                               value = c(floor(min(ctd_dat()$temperature, na.rm = TRUE)),
-                                        ceiling(max(ctd_dat()$temperature, na.rm = TRUE))) 
-      )
-    })
-    #pressure
-    observeEvent(input$update, {
+                                        ceiling(max(ctd_dat()$temperature, na.rm = TRUE))))
       updateNumericRangeInput(session,
                               inputId = 'pres_range',
                               value = c(floor(min(ctd_dat()$pressure, na.rm = TRUE)),
-                                        ceiling(max(ctd_dat()$pressure, na.rm = TRUE))) 
-      )
+                                        ceiling(max(ctd_dat()$pressure, na.rm = TRUE))))
+      
+      mval <- max(dat_qc()$avg_hr) - min(dat_qc()$avg_hr)
+      updateNumericRangeInput(session,
+                              inputId = 'hr_range',
+                              value = c(0,
+                                        ceiling_dec(mval, 1)))
     })
-    # hr range
-    ceiling_dec <- function(x, level=1) round(x + 5*10^(-level-1), level)
+    # update ranges with plot updates, perpetuate user input
     observeEvent(input$update, {
-      mval <- max(ctd_dat()$avg_hr) - min(ctd_dat()$avg_hr)
+      # salinity
+      updateNumericRangeInput(session,
+                              inputId = 'sal_range',
+                              value = c(floor(min(dat_qc()$salinity, na.rm = TRUE)),
+                                        ceiling(max(dat_qc()$salinity, na.rm = TRUE))) 
+                              )
+      # temperature
+      updateNumericRangeInput(session,
+                              inputId = 'temp_range',
+                              value = c(floor(min(dat_qc()$temperature, na.rm = TRUE)),
+                                        ceiling(max(dat_qc()$temperature, na.rm = TRUE))) 
+      )
+      #pressure
+      updateNumericRangeInput(session,
+                              inputId = 'pres_range',
+                              value = c(floor(min(dat_qc()$pressure, na.rm = TRUE)),
+                                        ceiling(max(dat_qc()$pressure, na.rm = TRUE))) 
+      )
+      # hr range
+      mval <- max(dat_qc()$avg_hr) - min(dat_qc()$avg_hr)
       updateNumericRangeInput(session,
                               inputId = 'hr_range',
                               value = c(0,
                                         ceiling_dec(mval, 1))
       )
-    })
+      })
+   
 # * CTD plotting functions ----       
       ctd_TS_profile_plot <- function(){
         isolate({
@@ -583,9 +622,13 @@ server <- function(input, output, session) {
             dplyr::filter(., temperature > min(input$temp_range)) %>%
             dplyr::filter(., temperature < max(input$temp_range)) %>%
             dplyr::filter(., pressure > min(input$pres_range)) %>%
-            dplyr::filter(., pressure < max(input$pres_range)) #%>%
-        #dplyr::filter(., avg_hr > min(input$hr_range)) %>%
-        # dplyr::filter(., avg_hr < max(input$hr_range))
+            dplyr::filter(., pressure < max(input$pres_range)) 
+        
+        validate(
+          need(length(all_dat$time_ms) > 5, 'Less than 5 valid data points available in your desired QC range! Please expand!')
+        )
+        
+        return(all_dat)
     })
     
     # Bin VPR and CTD data
@@ -615,6 +658,9 @@ server <- function(input, output, session) {
             dplyr::filter(., avg_hr < max(input$hr_range)) %>%
             dplyr::filter(., avg_hr > min(input$hr_range))
 
+        validate(
+          need(length(all_dat_q$time_ms) > 5, 'Less than 5 valid data points available in your desired time range! Please expand!')
+        )
         return(all_dat_q)
     })
 
