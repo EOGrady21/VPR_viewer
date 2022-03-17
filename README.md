@@ -24,13 +24,15 @@ In the day folder ((drive):\data\cruise\rois\vprxxx\dxxx), JpegLS_ADeck will als
 
 
 ## About
-This shiny app is in development at the Bedford Institute of Oceanogrpahy. It is currently being tested with 2008 version of the “Digital AutoVPR”, from SeaScan Inc, used in a tow-yo deployment pattern.
+This shiny app is in development at the Bedford Institute of Oceanogrpahy. It is currently being tested with Digital AutoVPR (DAVPR) - 27, from SeaScan Inc, used in a tow-yo deployment pattern.
 
 This app is designed to assist in the visualization of data from the VPR by resesarch scientists while they are onboard research cruises. It is meant to be a quick and easy way to check data before full processing can take place. The app displays both CTD data and ROI (Region of Interest) data. Each Region of Interest (ROI) represents an object detected within a VPR frame by the autoDeck software. AutoDeck is a software provided with the VPR by SeaScan which processes the raw video output from the VPR and outputs a series of image files (ROIs).
 
-The app has space for inputting metadata and CTD data files, as well as 4 tabs. The tabs are 'Plot', 'Summary', 'Table', and 'Images'. 
+The app has space for inputting metadata and CTD data files, as well as 5 tabs. The tabs are 'CTD Plot', 'VPR Plot', 'Summary', 'Table', and 'Images'. 
 
-The Plot tab displays 4 plots including a profile summary of CTD data (temperature, salinity, density and fluorescence), a profile summary of ROI concentration (shown in ROI per Litre). ROI concentration can be used as a proxy for plankton concentration until further processing. The Plot tab also displays 3 filled contour plots displaying ROI concentration along the path of the VPR over interpolated concentration, temperature and salinity. 
+The CTD plot tab shows a range of plots based solely on the CTD data. Make careful note that these plots will not adjust with the QC range adjustments made in the metadata panel. These plots are meant to show the full range of CTD data collected to allow troubleshooting and identification of errors. This data will be slightly different than the data displayed in the VPR Plot tab based on QC ranges but also the VPR Plot tab will only show CTD data points which have been associated with ROI images. The combined ROI & CTD data displayed in the VPR Plot tab may differ in density of observations, depending on the AutoDeck settings used to extract ROIs. 
+
+The VPR Plot tab displays 6 plots including a profile summary of CTD data (temperature, salinity, density and fluorescence), a profile summary of ROI concentration (shown in ROI per Litre). ROI concentration can be used as a proxy for plankton concentration until further processing. The Plot tab also displays 3 filled contour plots, displaying ROI concentration along the path of the VPR over interpolated concentration, temperature and salinity. The fifth plot shows ROI concentration (in metres cubed), in Temperature - Salinity space. The sixth plot shows how the data has been binned and seperated by cast over depth and time.
 ![Web capture_28-2-2022_125647_127 0 0 1](https://user-images.githubusercontent.com/38440373/156025360-6c6b61c6-a741-4681-a782-33b87672c129.jpeg)
 
 The Summary tab displays the range of each data variable found in the CTD data file. Note that if the sliders are used to narrow the data range, this will also be perpetuated through the summary output. Eg. Total data may range from 0-100 DB but if the pressure slider (in the metadata input), is capped at 50 DB, the summary will show that data ranges from 0-50 DB.
@@ -45,7 +47,8 @@ The Images tab displays an image gallery of ROIs for easy browsing and initial i
 ## The Inputs
 The app is able to read in .dat CTD files which are produced by AutoDeck from the raw VPR data. These CTD data files should be distinct for every hour of the VPR deployment. At this time only one 'hour' of data can be displayed at a time.
 
-The expected CTD data columns are as follows:
+The expected CTD data columns can differ between unique VPR instruments. Currently this app has two options available. 
+The DAVPR model #2 (from Gesche Winkler) has columns:
 
   - Time (ms)	
   - Conductivity	
@@ -58,6 +61,22 @@ The expected CTD data columns are as follows:
   - Turbidity (mv)	
   - Altitude
 
+The DAVPR model #27 (from Catherine Johnson - BIO) has columns:
+
+ - time_ms
+ - conductivity
+ - temperature
+ - pressure
+ - salinity
+ - NA
+ - fluorescence_mv
+ - turbidity_mv
+ - oxygen_mv
+ - pitch_deg
+ - roll_deg
+ - image_num
+ 
+ 
 The app is also able to display, in a gallery format, the ROI images output from autodeck. In the Images tab, a user may select the directory of ROI images which will be displayed.
 
 ## The Outputs
