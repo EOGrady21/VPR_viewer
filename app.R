@@ -207,11 +207,11 @@ dark <-  bs_theme(bootswatch = 'superhero', version = '5')
                                    )
                                  ),
                                  fluidRow(
-                                     column( 1, 
+                                     column(6, 
                                              imageOutput("image")
                                      ),
                                      
-                                     column(4, offset = 5, 
+                                     column(6,  
                                             imageOutput("image2")
                                      )
                                  )
@@ -762,7 +762,26 @@ server <- function(input, output, session) {
               need(length(vpr_sel$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
             )
 
-            vpr_plot_profile(taxa_conc_n = vpr_sel, taxa_to_plot = NULL, plot_conc = TRUE)
+            ctd_plots <- vpr_plot_profile(taxa_conc_n = vpr_sel, taxa_to_plot = NULL, plot_conc = FALSE)
+            
+            # plot concentration
+            pp <- ggplot(vpr_sel) +
+              geom_point(aes(x = depth, y = conc_m3)) + 
+              stat_summary_bin(aes(x = depth, y = conc_m3), fun = 'mean', col = 'red', geom = 'line', size = 3)  +
+              scale_x_reverse(name = 'Depth [m]') +
+              scale_y_continuous(name = expression('ROI Concentration / m'^'3')) +
+              # ggtitle('Concentrations') +
+              theme_classic() +
+              theme(panel.background = element_blank(),
+                    panel.grid = element_blank(),
+                    strip.text = element_text(size = 18),
+                    plot.title = element_text(size = 25),
+                    axis.title = element_text(size = 20))+
+              coord_flip()
+            
+            p <- gridExtra::grid.arrange(ctd_plots, pp, nrow = 1)
+            
+            return(p)
             
         })    
     }
@@ -802,7 +821,6 @@ server <- function(input, output, session) {
         #make contour plot
         filled.contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels = 50,
                        color.palette = cmpalf,
-                       #color.palette = colorRampPalette(c( "blue", 'red')),
                        ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Concentration',
                        #add anotations
                        plot.axes = {
@@ -814,10 +832,10 @@ server <- function(input, output, session) {
                          axis(1)
                          axis(2)
                          #add contour lines
-                         contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels=10, add = T)
+                         contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels=10, add = TRUE)
                          #enlarge bubble size based on concentration
                          symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
-                                 fg = "darkgrey", bg = "grey", inches = 0.3, add = T)
+                                 fg = "darkgrey", bg = "black", inches = 0.3, add = TRUE) 
                        }) 
       })
     }
@@ -855,7 +873,6 @@ server <- function(input, output, session) {
         #make contour plot
         filled.contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels = 50,
                        color.palette = cmpalf,
-                       #color.palette = colorRampPalette(c( "blue", 'red')),
                        ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Concentration over Temperature',
                        #add anotations
                        plot.axes = {
@@ -870,7 +887,7 @@ server <- function(input, output, session) {
                          contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels=10, add = T)
                          #enlarge bubble size based on concentration
                          symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
-                                 fg = "darkgrey", bg = "grey", inches = 0.3, add = T)
+                                 fg = "darkgrey", bg = "black", inches = 0.3, add = T)
                        }) 
       })
       
@@ -909,7 +926,6 @@ server <- function(input, output, session) {
         #make contour plot
         filled.contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels = 50,
                        color.palette = cmpalf,
-                       #color.palette = colorRampPalette(c( "blue", 'red')),
                        ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Concentration over Salinity',
                        #add annotations
                        plot.axes = {
@@ -924,7 +940,7 @@ server <- function(input, output, session) {
                          contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels=10, add = T)
                          #enlarge bubbles based on concentration
                          symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
-                                 fg = "darkgrey", bg = "grey", inches = 0.3, add = T)
+                                 fg = "darkgrey", bg = "black", inches = 0.3, add = T)
                        }) 
       })
       
