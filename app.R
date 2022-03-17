@@ -12,7 +12,7 @@ if(is_exiftool_available() == FALSE){install_exiftool()}
 
 # Theme -----
 thematic_shiny() #theme plots to match bs_theme() argument
-light <- bs_theme(bootswatch = 'zephyr', version = 5)
+light <- bs_theme(bootswatch = 'zephyr', version = '5')
 dark <-  bs_theme(bootswatch = 'superhero', version = '5')
 
 # Cache ----
@@ -58,9 +58,19 @@ dark <-  bs_theme(bootswatch = 'superhero', version = '5')
                 )
                 ),
           
-            fileInput('ctd_files', label = 'CTD Files', multiple = FALSE, accept = '.dat') %>%
-              helper(content = 'ctd_files'),
-            
+            fluidRow(column(9,
+              fileInput('ctd_files', label = 'CTD Files', multiple = FALSE, accept = '.dat') %>%
+              helper(content = 'ctd_files')
+              ),
+            column(3, 
+                   dropdownButton(inputId = 'ctd_column_drop',
+                           label = 'VPR CTD version',
+                           circle = TRUE,
+                           pickerInput(inputId = 'vpr_version', 
+                                       choices = list('DAVPR 27 (BIO)', 'DAVPR 2'),
+                                       selected = 'DAVPR 2')) %>%
+              helper(content = 'ctd_col_drop')
+            )),
             textInput('cruise', 'Cruise ID', placeholder = 'eg. IML2018051', value = 'IML2018051') %>% 
               helper(content = 'cruise'),
             
@@ -174,12 +184,14 @@ dark <-  bs_theme(bootswatch = 'superhero', version = '5')
                                    # binned cast
                                    column(3, offset = 9,
                                           downloadButton('save6', label = 'Save')),
-                                   column(12, plotOutput('plot6'))
+                                   column(12, plotOutput('plot6')) %>%
+                                   helper(content = 'cast_plot')
 
                                  ), 
                         tabPanel("Summary", verbatimTextOutput("summary")),
                         tabPanel("Table", DT::dataTableOutput("ctdroi")),
                         tabPanel("Images",
+                                 wellPanel(
                                  shinyDirButton("dir", "Choose ROI directory", "Upload") %>%
                                    helper(content = 'roi_dir'),
                                  fluidRow( 
@@ -192,7 +204,8 @@ dark <-  bs_theme(bootswatch = 'superhero', version = '5')
                                           selected = 'Time (default)') %>% # set default
                                    helper(content = 'image_sorting')
                                    )
-                                   ),
+                                   )
+                                 ),
                                  fluidRow(
                                      column( 1, 
                                              imageOutput("image")
@@ -224,14 +237,26 @@ server <- function(input, output, session) {
     ceiling_dec <- function(x, level=1) round(x + 5*10^(-level-1), level)
     
     
+    
 # * Load CTD data ----    
       ctd_dat <- reactive({
-       
+       # get CTD columns
+        if(input$vpr_version == 'DAVPR 27 (BIO)'){
+          ctd_col <- c("time_ms", "conductivity", "temperature", "pressure", "salinity", "NA", "fluorescence_mv",
+                        "turbidity_mv", "oxygen_mv", "pitch_deg", "roll_deg", "image_num")
+        } else if(input$vpr_version == 'DAVPR 2') {
+        ctd_col <- c("time_ms", "conductivity", "temperature", "pressure", "salinity", "fluor_ref", "fluorescence_mv",
+                     "turbidity_ref", "turbidity_mv", "altitude_NA")
+      }
         req(input$ctd_files)
         
         ctd_fns <- input$ctd_files
         
-        ctd_dat <- vpr_ctd_read(ctd_fns$datapath, station_of_interest = input$station, day = input$day, hour = input$hour)
+        ctd_dat <- vpr_ctd_read(ctd_fns$datapath, 
+                                station_of_interest = input$station, 
+                                day = input$day, 
+                                hour = input$hour, 
+                                col_list = ctd_col)
         
         ctd_dat$avg_hr <- ctd_dat$time_ms / 3.6e+06
         
@@ -734,7 +759,7 @@ server <- function(input, output, session) {
                 dplyr::filter(., avg_hr > min(input$hr_range))
             
             validate(
-              need(length(vpr_sel$avg_hr) > 25, "Too few valid data points in selected time range! Please expand!")
+              need(length(vpr_sel$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
             )
 
             vpr_plot_profile(taxa_conc_n = vpr_sel, taxa_to_plot = NULL, plot_conc = TRUE)
@@ -749,15 +774,17 @@ server <- function(input, output, session) {
         all_dat <- datasetInput()
         
         vpr_sel_bin <- vpr_depth_bin %>%
+          # dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
         
         sel_dat <- all_dat %>%
+          dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
         
         validate(
-          need(length(vpr_sel_bin$avg_hr) > 25, "Too few valid data points in selected time range! Please expand!")
+          need(length(vpr_sel_bin$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
         )
         
         #interpolate data
@@ -805,11 +832,12 @@ server <- function(input, output, session) {
           dplyr::filter(., avg_hr > min(input$hr_range))
         
         sel_dat <- all_dat %>%
+          dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
         
         validate(
-          need(length(vpr_sel_bin$avg_hr) > 25, "Too few valid data points in selected time range! Please expand!")
+          need(length(vpr_sel_bin$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
         )
         
         #interpolate data
@@ -859,11 +887,12 @@ server <- function(input, output, session) {
           dplyr::filter(., avg_hr > min(input$hr_range))
         
         sel_dat <- all_dat %>%
+          dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
         
         validate(
-          need(length(vpr_sel_bin$avg_hr) > 25, "Too few valid data points in selected time range! Please expand!")
+          need(length(vpr_sel_bin$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
         )
         
         vpr_int <- akima::interp(x = vpr_depth_bin$avg_hr, y = vpr_depth_bin$depth, z = vpr_depth_bin$salinity, duplicate = 'strip')
