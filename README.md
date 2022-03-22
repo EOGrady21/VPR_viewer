@@ -32,8 +32,11 @@ The app has space for inputting metadata and CTD data files, as well as 5 tabs. 
 
 The CTD plot tab shows a range of plots based solely on the CTD data. Make careful note that these plots will not adjust with the QC range adjustments made in the metadata panel. These plots are meant to show the full range of CTD data collected to allow troubleshooting and identification of errors. This data will be slightly different than the data displayed in the VPR Plot tab based on QC ranges but also the VPR Plot tab will only show CTD data points which have been associated with ROI images. The combined ROI & CTD data displayed in the VPR Plot tab may differ in density of observations, depending on the AutoDeck settings used to extract ROIs. 
 
+![Web capture_22-3-2022_133459_127 0 0 1](https://user-images.githubusercontent.com/38440373/159529758-850440a3-e995-4ded-8c83-d29386036406.jpeg)
+
 The VPR Plot tab displays 6 plots including a profile summary of CTD data (temperature, salinity, density and fluorescence), a profile summary of ROI concentration (shown in ROI per Litre). ROI concentration can be used as a proxy for plankton concentration until further processing. The Plot tab also displays 3 filled contour plots, displaying ROI concentration along the path of the VPR over interpolated concentration, temperature and salinity. The fifth plot shows ROI concentration (in metres cubed), in Temperature - Salinity space. The sixth plot shows how the data has been binned and seperated by cast over depth and time.
-![Web capture_28-2-2022_125647_127 0 0 1](https://user-images.githubusercontent.com/38440373/156025360-6c6b61c6-a741-4681-a782-33b87672c129.jpeg)
+![Web capture_22-3-2022_133520_127 0 0 1](https://user-images.githubusercontent.com/38440373/159529700-2225b7a2-d88e-49bc-87eb-2bb8800c07a5.jpeg)
+
 
 The Summary tab displays the range of each data variable found in the CTD data file. Note that if the sliders are used to narrow the data range, this will also be perpetuated through the summary output. Eg. Total data may range from 0-100 DB but if the pressure slider (in the metadata input), is capped at 50 DB, the summary will show that data ranges from 0-50 DB.
 
@@ -42,7 +45,7 @@ The Table tab displays a data table with all the CTD and ROI data, as well as so
 
 The Images tab displays an image gallery of ROIs for easy browsing and initial identification of plankton. Note that these images may also be subset if metadata sliders are used to subset data. 
 
-![Web capture_28-2-2022_125717_127 0 0 1](https://user-images.githubusercontent.com/38440373/156175380-41f14a9b-9697-4ce5-9967-48b7231c0eb8.jpeg)
+![Web capture_22-3-2022_133633_127 0 0 1](https://user-images.githubusercontent.com/38440373/159529790-8626774c-0ecb-47cf-8147-9d346d4d7d86.jpeg)
 
 ## The Inputs
 The app is able to read in .dat CTD files which are produced by AutoDeck from the raw VPR data. These CTD data files should be distinct for every hour of the VPR deployment. At this time only one 'hour' of data can be displayed at a time.
