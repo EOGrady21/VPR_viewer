@@ -200,12 +200,33 @@ dark <-  bs_theme(bootswatch = 'superhero', version = '5')
                                    ),
                                    column(6,
                                    pickerInput(inputId = 'sorting', label = 'Image Sorting',
-                                          choices = list('Time (default)', 'Small -> Large', 'Large -> Small'),
+                                          choices = list('Time (default)', 'Small -> Large', 'Large -> Small', 'Custom'),
                                           selected = 'Time (default)') %>% # set default
                                    helper(content = 'image_sorting')
                                    )
                                    )
                                  ),
+                                 conditionalPanel(condition = "input.sorting == 'Custom'",
+                                                  wellPanel(
+                                                    fluidRow(
+                                                    column(6,
+                                                           numericRangeInput(inputId = 'size_range', 
+                                                                    label = 'Size Range (px)', 
+                                                                    value = c(0, 500),
+                                                                    min = 0
+                                                                    ) %>%
+                                                    helper(content = 'custom_size')
+                                                    ),
+                                                    column(6,
+                                                  pickerInput(inputId = 'sorting_custom',
+                                                              label = 'Image Sorting [custom]',
+                                                              choices = list('Time (default)', 'Small -> Large', 'Large -> Small'),
+                                                              selected = 'Time (default)'
+                                                              ))
+                                                  )
+                                                  )
+                                                  ),
+                                 
                                  fluidRow(
                                      column(6, 
                                              imageOutput("image")
@@ -1110,7 +1131,20 @@ server <- function(input, output, session) {
      
     # get utility values for splitting images into columns
     ipgmax <- reactive(input$num)
-    num_col <- reactive(ipgmax()/2)
+    num_col <- reactive({
+      num_col <- ipgmax()/2
+      if(input$sorting == 'Custom'){
+        if(length(custom_index()) < input$num){
+         num_col <- round(length(custom_index())/ 2, 0)
+         validate({
+           need(num_col != 0, 'No valid images detected in custom range!')
+         })
+        }
+      }
+      return(num_col)
+      })
+    
+    # in case number of images requested is greater than available images in custom index
     
     # get all image files
     imgss <- reactive({
@@ -1145,26 +1179,20 @@ server <- function(input, output, session) {
     
     # get image metadata
     d <- reactive({
-     # input$update # attempt to only update when necessary
       isolate({
         withProgress(message ='Sorting images...', { # adds progress bar
           d <- exif_read(img_valid())
           }) # check all images -- v slow
       })
     }) # %>%
-   # bindCache(d()) # work on caching solution
+   # bindCache(d()) # TODO - work on caching solution
     
     # sort valid images based on user selection
     sorted_index <- reactive({
       input$update
       isolate({
-        # withProgress( message ='Sorting images...', { # adds progress bar
-        #   d <- exif_read(img_valid()) %>% # check all images -- v slow
-        #     bindCache(d)
           dimdat <- (d()$ImageHeight + d()$ImageWidth) /2 # calulate avg dimension
           names(dimdat) <- d()$FileName
-          # })
-      
         # get an ordered index 
       if(isolate(input$sorting) == 'Small -> Large'){
         sorted_index <- order(dimdat, decreasing = FALSE)
@@ -1174,12 +1202,66 @@ server <- function(input, output, session) {
       })
     })
     
+    # get custom index
+    custom_index <- reactive({
+      input$update
+      isolate({
+        dimdat <- (d()$ImageHeight + d()$ImageWidth) /2 # calulate avg dimension
+        names(dimdat) <- d()$FileName
+        
+        dimdat_c <- dimdat[dimdat > min(input$size_range) & dimdat < max(input$size_range)]
+        
+        # TODO: THIS IS BROKEN
+        # dimdat_c only has valid imgs in size range, but ordered 'custom_index' is then used to index all images
+        # not actually excluding images outside size range
+        # order(dimdat[dimdat %in% dimdat_c]) use something like this?
+        # will then need to write some catch in case number of images requested is more than available in size range
+        # may cause some weird errors because length will be different than total number of ROI images
+        # may have to rework this completely
+        
+        # check that similar problem is not happening with sorted_index
+        
+        # size sorted index for custom and sorted is not actually indexing properly
+       
+        
+        
+        if(isolate(input$sorting_custom) == 'Small -> Large'){
+          dimdat_c_o <- dimdat_c[order(dimdat_c, decreasing = FALSE)]
+          imgvalid_c <- paste0(imgs_path(), names(dimdat_c_o))
+          custom_index <- list()
+          for( i in 1:length(dimdat_c_o)){ # looping is not an ideal solution 
+            custom_index[[i]] <- which(img_valid() == imgvalid_c[i])
+          }
+          custom_index <- unlist(custom_index)
+          # custom_index <- which(img_valid() %in% imgvalid_c)
+          # custom_index <- order(dimdat[dimdat %in% dimdat_c], decreasing = FALSE)
+        }else if(isolate(input$sorting_custom) == 'Large -> Small'){
+          dimdat_c_o <- dimdat_c[order(dimdat_c, decreasing = TRUE)]
+          imgvalid_c <- paste0(imgs_path(), names(dimdat_c_o))
+          custom_index <- list()
+          for( i in 1:length(dimdat_c_o)){ # looping is not an ideal solution 
+            custom_index[[i]] <- which(img_valid() == imgvalid_c[i])
+          }
+          custom_index <- unlist(custom_index)
+          # custom_index <- which(img_valid() %in% imgvalid_c)
+          # custom_index <- order(dimdat[dimdat %in% dimdat_c], decreasing = TRUE)
+        } else if (isolate(input$sorting_custom) == 'Time (default)'){ # TODO: check that this is properly ordered by time
+          custom_index <- which(dimdat %in% dimdat_c) # check this line with an example where size subset should be small
+        }
+         return(custom_index)
+      })
+    })
+    
+   
+    
     # set colum 1 index based on sorted values or default
     index <- reactive({
       if(input$sorting == 'Time (default)'){
         index <- seq(1, num_col())
-      } else{ # WARNING: assumes only 3 options (time (default), lg - sm or sm- lg)
+      } else if (input$sorting %in% c('Small -> Large', 'Large -> Small')){ 
         index <- sorted_index()[1:num_col()]
+      } else if (input$sorting == 'Custom'){
+       index <- custom_index()[1:num_col()]
       }
     })
 
@@ -1187,8 +1269,10 @@ server <- function(input, output, session) {
     index2 <- reactive({
       if(input$sorting == 'Time (default)'){
         index2 <- seq(num_col()+1, num_col()*2)
-      } else{
+      } else if (input$sorting %in% c('Small -> Large', 'Large -> Small')){
         index2 <- sorted_index()[num_col()+1: num_col()*2]
+      } else if (input$sorting == 'Custom'){
+        index2 <- custom_index()[num_col()+1: num_col()*2]
       }
     })
     
@@ -1197,11 +1281,11 @@ server <- function(input, output, session) {
       # add loading icon
       waiter::Waiter$new(id = "image", color = 'blue')$show()
       
-      img1 <- img_valid()[index()]
-      roi_id_string <- stringr::str_c(validroi(), sep = ',')
-      image <- image_read(na.omit(img1))
-      image <- image_annotate(image, roi_id_string, color = 'red', size = 15)
-      image <- image_append(image_border(image, color = 'white', geometry = '10x8'), stack = TRUE)
+       img1 <- img_valid()[index()]
+       roi_id_string <- stringr::str_c(vpr_roi(img1), sep = ',') 
+       image <- image_read(na.omit(img1))
+       image <- image_annotate(image, roi_id_string, color = 'red', size = 15)
+       image <- image_append(image_border(image, color = 'white', geometry = '10x8'), stack = TRUE)
     })
     
     # read in second column of images
@@ -1209,11 +1293,11 @@ server <- function(input, output, session) {
       # add loading icon
       waiter::Waiter$new(id = "image2", color = 'blue')$show()
       
-      img2 <- img_valid()[index2()]
-      roi_id_string <- stringr::str_c(validroi(), sep = ',')
-      image <- image_read(na.omit(img2))
-      image <- image_annotate(image, roi_id_string, color = 'red', size = 15)
-      image <- image_append(image_border(image, color = 'white'), stack = TRUE)
+       img2 <- img_valid()[index2()]
+       roi_id_string <- stringr::str_c(vpr_roi(img2), sep = ',') 
+       image <- image_read(na.omit(img2))
+       image <- image_annotate(image, roi_id_string, color = 'red', size = 15)
+       image <- image_append(image_border(image, color = 'white'), stack = TRUE)
     })
    
 # * Output Image Gallery ----
