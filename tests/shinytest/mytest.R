@@ -1,4 +1,4 @@
-app <- ShinyDriver$new("../../")
+app <- ShinyDriver$new(path = "../../", loadTimeout = 1e+05, seed = 1234)
 app$snapshotInit("mytest")
 
 app$uploadFile(ctd_files = "../../www/IML2018051/rois/vpr0/d286/h22ctd.dat") # <-- This should be the path to the file, relative to the app's tests/shinytest directory

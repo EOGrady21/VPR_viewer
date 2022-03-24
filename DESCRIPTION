@@ -1,0 +1,30 @@
+Package: VPR_viewer
+Title: Visualize Video Plankton Recorder Data
+Version: 0.0.0.9000
+Authors@R: 
+    person("Emily", "O'Grady", , "emily.chisholm@dfo-mpo.gc.ca", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-1072-5879"))
+Description: A shiny app to visualize plankton data and images from the Video Plankton Recorder (VPR). 
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
+Imports: shiny,
+        vprr,
+        magick, 
+        ggplot2, 
+        metR, 
+        dplyr, 
+        DT, 
+        base64enc, 
+        shinyFiles,
+        bslib, 
+        thematic,
+        shinyWidgets,
+        shinyhelper,
+        spelling,
+        exiftoolr,
+        oce,
+        gridExtra,
+        waiter
+        

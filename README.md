@@ -1,4 +1,8 @@
-# Plankton Plotter
+<!-- badges: start -->
+  [![R-CMD-check](https://github.com/EOGrady21/VPR_viewer/workflows/R-CMD-check/badge.svg)](https://github.com/EOGrady21/VPR_viewer/actions)
+  <!-- badges: end -->
+  
+# VPR viewer
 A shiny app to visualize plankton data and images from the Video Plankton Recorder (VPR). 
 
 ## Getting Started
