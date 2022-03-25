@@ -26,5 +26,6 @@ Imports: shiny,
         exiftoolr,
         oce,
         gridExtra,
-        waiter
+        waiter,
+        testthat
         

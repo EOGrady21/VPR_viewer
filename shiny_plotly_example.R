@@ -12,8 +12,10 @@ library(vprr)
 # - images are displayed on hover (this could be adjusted to click or double click)
 # - the images need to be read in, converted to PNG, then converted again to base64enc 
 #          (this is the slowest part of the backend)
-# - this example only displays ten data points (very minimal - typical set would be 100x more data)
-# - this example is hard coded with data
+# - this example is currently tested on a 1000 image dataset (typical dataset would be x10)
+# - takes about 3 minutes to load all data, once data is loaded, plot is quite quick to react
+# - this example is hard coded with data on EOG's computer, if this was brouught to VPRv,
+#       would need to readjust some sections to create reactivity
 
 
 ui <- dashboardPage(
