@@ -162,21 +162,23 @@ dark <-  bs_theme(bootswatch = 'superhero', version = '5')
                                  fluidRow(
                                    column( 3, offset = 9,
                                    downloadButton('save1', label = 'Save') %>%
-                                     helper(content = 'save')),
+                                     helper(content = 'save'))),
+                                 fluidRow(
                                    column(12, plotOutput("plot"))
                                  ),
                                  # concentration interpolation
-                                   column(3, offset = 9,
-                                          downloadButton('save2', label = 'Save')),
-                                   column(12, plotOutput('plot2')),
+                                   fixedRow(column(3, offset = 9,
+                                          downloadButton('save2', label = 'Save'))),
+                                 fixedRow(
+                                   column(12, plotOutput('plot2'))),
                                    # temperature interpolation
-                                   column(3, offset = 9,
-                                          downloadButton('save3', label = 'Save')),
-                                   column(12, plotOutput('plot3')),
+                                   fixedRow(column(3, offset = 9,
+                                          downloadButton('save3', label = 'Save'))),
+                                   fixedRow(column(12, plotOutput('plot3'))),
                                    # salinity interpolation
-                                   column(3, offset = 9,
-                                          downloadButton('save4', label = 'Save')),
-                                   column(12, plotOutput('plot4')),
+                                   fixedRow(column(3, offset = 9,
+                                          downloadButton('save4', label = 'Save'))),
+                                   fixedRow(column(12, plotOutput('plot4'))),
                                    # TS plot
                                    column(3, offset = 9,
                                           downloadButton('save5', label = 'Save')),
@@ -837,6 +839,8 @@ server <- function(input, output, session) {
         if(max(x_limits) > max(vpr_depth_bin$avg_hr)){
           x_limits[2] <- max(vpr_depth_bin$avg_hr)
         }
+        cmpalf <- cmocean::cmocean('matter')
+        cmo_data <- cmpalf(100)
         
 
         taxa_dat_zero <- vpr_sel_bin %>%
@@ -845,9 +849,7 @@ server <- function(input, output, session) {
         taxa_dat <- vpr_sel_bin %>%
           dplyr::filter(., conc_m3 > 0)
         
-        cmpalf <- cmocean::cmocean('matter')
-        cmo_data <- cmpalf(100)
-        
+       
         df <- akima::interp2xyz(vpr_int, data.frame = TRUE)
         
         #make contour plot
@@ -860,9 +862,8 @@ server <- function(input, output, session) {
           geom_contour(aes(x = x, y = y, z = z), col = "black") +
           geom_text_contour(aes(x = x, y = y, z = z), col = 'white', check_overlap = TRUE, size = 8)+
           scale_fill_gradientn(colours = cmo_data, na.value = 'gray')+
-          geom_line(data = sel_dat, aes(x = avg_hr - min(avg_hr), y = depth), col = 'snow4', inherit.aes = FALSE) +
-          geom_point(data = taxa_dat, aes(x = avg_hr, y = min_depth, size = conc_m3), pch = 21, alpha = 0.5, fill = 'black')+
-          geom_point(data = taxa_dat, aes(x = avg_hr, y = min_depth, size = conc_m3), pch = 21, colour = 'white', alpha = 0.5) +
+          geom_line(data = sel_dat, aes(x = avg_hr, y = depth), col = 'snow4', inherit.aes = TRUE) +
+          geom_point(data = taxa_dat, aes(x = avg_hr, y = (min_depth+max_depth)/2, size = conc_m3), pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
           geom_point(data = taxa_dat_zero, aes(x = avg_hr, y = min_depth), pch = 7, colour = 'gray', alpha = 0.7) +
           ggtitle("Concentration" ) +
           labs(size = expression("Concentration /m" ^3), fill = expression("Concentration /m" ^3))+
@@ -874,8 +875,8 @@ server <- function(input, output, session) {
                 plot.title = element_text(size = 32),
                 axis.ticks = element_line(size = 1, lineend = 'square'),
                 axis.text = element_text(size = 30),
-                legend.text = element_text(size = 20),
-                legend.title = element_text(size = 25)
+                legend.text = element_text(size = 10),
+                legend.title = element_text(size = 15)
           )
          return(p)
         # filled.contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels = 50,
@@ -930,27 +931,66 @@ server <- function(input, output, session) {
         if(max(x_limits) > max(vpr_depth_bin$avg_hr)){
           x_limits[2] <- max(vpr_depth_bin$avg_hr)
         }
-        
         cmpalf <- cmocean::cmocean('thermal')
+        cmo_data <- cmpalf(100)
+        
+        
+        taxa_dat_zero <- vpr_sel_bin %>%
+          dplyr::filter(., conc_m3 == 0)
+        
+        taxa_dat <- vpr_sel_bin %>%
+          dplyr::filter(., conc_m3 > 0)
+        
+        
+        df <- akima::interp2xyz(vpr_int, data.frame = TRUE)
+        
         #make contour plot
-        filled.contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels = 50,
-                       color.palette = cmpalf,
-                       ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Concentration over Temperature',
-                       #add anotations
-                       plot.axes = {
-                         #add bubbles
-                         points(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, pch = ".")
-                         #add vpr path
-                         points(sel_dat$avg_hr - min(sel_dat$avg_hr), sel_dat$depth, type = 'l')
-                         #add axes
-                         axis(1)
-                         axis(2)
-                         #add contour lines
-                         contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels=10, add = T)
-                         #enlarge bubble size based on concentration
-                         symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
-                                 fg = "darkgrey", bg = "black", inches = 0.3, add = T)
-                       }) 
+        p <- ggplot(df) +
+          geom_tile(aes(x = x, y = y, fill = z)) +
+          labs(fill = 'Temperature [deg C]') +
+          scale_y_reverse(name = "Depth [m]") +
+          scale_x_continuous(name = "Time [h]") +
+          theme_classic() +
+          geom_contour(aes(x = x, y = y, z = z), col = "black") +
+          geom_text_contour(aes(x = x, y = y, z = z), col = 'white', check_overlap = TRUE, size = 8)+
+          scale_fill_gradientn(colours = cmo_data, na.value = 'gray')+
+          geom_line(data = sel_dat, aes(x = avg_hr , y = depth), col = 'snow4', inherit.aes = FALSE) +
+          geom_point(data = taxa_dat, aes(x = avg_hr, y = (min_depth+max_depth)/2, size = conc_m3), pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
+          geom_point(data = taxa_dat_zero, aes(x = avg_hr, y = min_depth), pch = 7, colour = 'gray', alpha = 0.7) +
+          ggtitle("Concentration over Temperature" ) +
+          labs(size = expression("Concentration /m" ^3), fill = expression(paste(degree,"C")))+
+          scale_size_continuous(range = c(0, 20)) +
+          # facet_wrap(~taxa, ncol = 1, scales = 'free') +
+          theme(legend.key.size = unit(0.8, 'cm'),
+                axis.title = element_text(size = 20),
+                strip.text = element_text(size = 20),
+                plot.title = element_text(size = 32),
+                axis.ticks = element_line(size = 1, lineend = 'square'),
+                axis.text = element_text(size = 30),
+                legend.text = element_text(size = 10),
+                legend.title = element_text(size = 15)
+          )
+        return(p)
+        # cmpalf <- cmocean::cmocean('thermal')
+        # #make contour plot
+        # filled.contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels = 50,
+        #                color.palette = cmpalf,
+        #                ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Concentration over Temperature',
+        #                #add anotations
+        #                plot.axes = {
+        #                  #add bubbles
+        #                  points(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, pch = ".")
+        #                  #add vpr path
+        #                  points(sel_dat$avg_hr - min(sel_dat$avg_hr), sel_dat$depth, type = 'l')
+        #                  #add axes
+        #                  axis(1)
+        #                  axis(2)
+        #                  #add contour lines
+        #                  contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels=10, add = T)
+        #                  #enlarge bubble size based on concentration
+        #                  symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
+        #                          fg = "darkgrey", bg = "black", inches = 0.3, add = T)
+        #                }) 
       })
       
     }
@@ -985,25 +1025,65 @@ server <- function(input, output, session) {
         }
         
         cmpalf <- cmocean::cmocean('haline')
+        cmo_data <- cmpalf(100)
+        
+        
+        taxa_dat_zero <- vpr_sel_bin %>%
+          dplyr::filter(., conc_m3 == 0)
+        
+        taxa_dat <- vpr_sel_bin %>%
+          dplyr::filter(., conc_m3 > 0)
+        
+        
+        df <- akima::interp2xyz(vpr_int, data.frame = TRUE)
+        
         #make contour plot
-        filled.contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels = 50,
-                       color.palette = cmpalf,
-                       ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Concentration over Salinity',
-                       #add annotations
-                       plot.axes = {
-                         #add bubbles
-                         points(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, pch = ".")
-                         #add vpr path
-                         points(sel_dat$avg_hr - min(sel_dat$avg_hr), sel_dat$depth, type = 'l')
-                         #add axes
-                         axis(1)
-                         axis(2)
-                         #add contour lines
-                         contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels=10, add = T)
-                         #enlarge bubbles based on concentration
-                         symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
-                                 fg = "darkgrey", bg = "black", inches = 0.3, add = T)
-                       }) 
+        p <- ggplot(df) +
+          geom_tile(aes(x = x, y = y, fill = z)) +
+          labs(fill = 'Salinity [PSU]') +
+          scale_y_reverse(name = "Depth [m]") +
+          scale_x_continuous(name = "Time [h]") +
+          theme_classic() +
+          geom_contour(aes(x = x, y = y, z = z), col = "black") +
+          geom_text_contour(aes(x = x, y = y, z = z), col = 'white', check_overlap = TRUE, size = 8)+
+          scale_fill_gradientn(colours = cmo_data, na.value = 'gray')+
+          geom_line(data = sel_dat, aes(x = avg_hr, y = depth), col = 'snow4', inherit.aes = FALSE) +
+          geom_point(data = taxa_dat, aes(x = avg_hr, y = (min_depth+max_depth)/2, size = conc_m3), pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
+          geom_point(data = taxa_dat_zero, aes(x = avg_hr, y = min_depth), pch = 7, colour = 'gray', alpha = 0.7) +
+          ggtitle("Concentration over Salinity" ) +
+          labs(size = expression("Concentration /m" ^3), fill = "PSU")+
+          scale_size_continuous(range = c(0, 20)) +
+          # facet_wrap(~taxa, ncol = 1, scales = 'free') +
+          theme(legend.key.size = unit(0.8, 'cm'),
+                axis.title = element_text(size = 20),
+                strip.text = element_text(size = 20),
+                plot.title = element_text(size = 32),
+                axis.ticks = element_line(size = 1, lineend = 'square'),
+                axis.text = element_text(size = 30),
+                legend.text = element_text(size = 10),
+                legend.title = element_text(size = 15)
+          )
+        return(p)
+        # cmpalf <- cmocean::cmocean('haline')
+        # #make contour plot
+        # filled.contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels = 50,
+        #                color.palette = cmpalf,
+        #                ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Concentration over Salinity',
+        #                #add annotations
+        #                plot.axes = {
+        #                  #add bubbles
+        #                  points(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, pch = ".")
+        #                  #add vpr path
+        #                  points(sel_dat$avg_hr - min(sel_dat$avg_hr), sel_dat$depth, type = 'l')
+        #                  #add axes
+        #                  axis(1)
+        #                  axis(2)
+        #                  #add contour lines
+        #                  contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels=10, add = T)
+        #                  #enlarge bubbles based on concentration
+        #                  symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
+        #                          fg = "darkgrey", bg = "black", inches = 0.3, add = T)
+        #                }) 
       })
       
     }
@@ -1014,7 +1094,16 @@ server <- function(input, output, session) {
         dat_f <- dat %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
-        vpr_plot_TS(x = dat_f, var = "conc_m3")
+        vpr_plot_TS(x = dat_f, var = "conc_m3") +
+          theme(legend.key.size = unit(0.8, 'cm'),
+                axis.title = element_text(size = 20),
+                strip.text = element_text(size = 20),
+                plot.title = element_text(size = 32),
+                axis.ticks = element_line(size = 1, lineend = 'square'),
+                axis.text = element_text(size = 30),
+                legend.text = element_text(size = 10),
+                legend.title = element_text(size = 15)
+          )
       })
     }
     
@@ -1032,7 +1121,15 @@ server <- function(input, output, session) {
           ggtitle('Binned Casts')+
           theme(panel.background = element_blank(),
                 panel.grid = element_blank(),
-                plot.title = element_text(size = 28))
+                legend.key.size = unit(0.8, 'cm'),
+                axis.title = element_text(size = 20),
+                strip.text = element_text(size = 20),
+                plot.title = element_text(size = 32),
+                axis.ticks = element_line(size = 1, lineend = 'square'),
+                axis.text = element_text(size = 30),
+                legend.text = element_text(size = 10),
+                legend.title = element_text(size = 15)
+        )
       })
     }
 
