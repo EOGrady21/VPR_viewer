@@ -334,7 +334,7 @@ server <- function(input, output, session) {
                               value = c(floor(min(ctd_dat()$pressure, na.rm = TRUE)),
                                         ceiling(max(ctd_dat()$pressure, na.rm = TRUE))))
       
-      mval <- max(dat_qc()$avg_hr) - min(dat_qc()$avg_hr)
+      mval <- max(ctd_dat()$avg_hr) - min(ctd_dat()$avg_hr)
       updateNumericRangeInput(session,
                               inputId = 'hr_range',
                               value = c(0,
@@ -449,7 +449,7 @@ server <- function(input, output, session) {
             
             #set consistent x and y limits
             y_limits <- rev(range(ctd_int$y))
-            x_limits <- range(input$hr_range)
+            x_limits <- range(ctd_int$x)
           
             if(max(x_limits) > max(d$avg_hr)){
                x_limits[2] <- max(d$avg_hr)
@@ -488,7 +488,7 @@ server <- function(input, output, session) {
             
             #set consistent x and y limits
             y_limits <- rev(range(ctd_int$y))
-            x_limits <- range(input$hr_range)
+            x_limits <- range(ctd_int$x)
             
             if(max(x_limits) > max(d$avg_hr)){
               x_limits[2] <- max(d$avg_hr)
@@ -662,7 +662,9 @@ server <- function(input, output, session) {
         
         #add  time(hr) to combined data frame
         all_dat <- all_dat %>%
-            dplyr::mutate(., avg_hr = time_ms/3.6e+06)
+            dplyr::mutate(., avg_hr = time_ms/3.6e+06) #%>%
+             #dplyr::mutate(., avg_hr = avg_hr - min(avg_hr))
+          
         
         all_dat <- all_dat %>% #filter data based on parameter ranges 
             dplyr::filter(., salinity > min(input$sal_range)) %>%
@@ -693,7 +695,23 @@ server <- function(input, output, session) {
         
         ctd_roi_oce <- vpr_oce_create(all_dat)
         
-        vpr_depth_bin <- bin_cast(ctd_roi_oce = ctd_roi_oce , imageVolume = input$imageVolume, binSize = input$binSize, rev = TRUE)
+        # vpr_depth_bin <- bin_cast(ctd_roi_oce = ctd_roi_oce , imageVolume = input$imageVolume, binSize = input$binSize, rev = TRUE)
+        #seperate into up and down casts before binning data
+        #find upcasts
+        upcast <- ctd_cast(data = ctd_roi_oce, cast_direction = 'ascending', data_type = 'df')
+        upcast2 <- lapply(X = upcast, FUN = bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
+        upcast_df <- do.call(rbind, upcast2)
+        #find downcasts
+        downcast <- ctd_cast(ctd_roi_oce, "descending", "df")
+        downcast2 <- lapply(X = downcast, FUN = bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
+        downcast_df <- do.call(rbind, downcast2)
+        #combine_data into bins
+        vpr_depth_bin <- rbind(upcast_df, downcast_df)
+        vpr_depth_bin <- data.frame(vpr_depth_bin)
+        
+        #zero time values for neat plot axes 
+        vpr_depth_bin <- vpr_depth_bin %>%
+          dplyr::mutate(., avg_hr = avg_hr - min(all_dat$avg_hr)) # EOG: fixes issue where data was not aligning between all data and binned data
     })
     
     # filter data by time
@@ -702,7 +720,6 @@ server <- function(input, output, session) {
         all_dat <- datasetInput()
         
         all_dat_q <- all_dat %>%
-            dplyr::mutate(., avg_hr = avg_hr - min(avg_hr))%>%
             dplyr::filter(., avg_hr < max(input$hr_range)) %>%
             dplyr::filter(., avg_hr > min(input$hr_range))
 
@@ -817,27 +834,27 @@ server <- function(input, output, session) {
         
         vpr_sel_bin <- vpr_depth_bin %>%
           # dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
-          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-          dplyr::filter(., avg_hr > min(input$hr_range))
+           dplyr::filter(., avg_hr <= max(input$hr_range)) %>%
+           dplyr::filter(., avg_hr >= min(input$hr_range))
         
         sel_dat <- all_dat %>%
-          dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
-          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-          dplyr::filter(., avg_hr > min(input$hr_range))
+           dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
+           dplyr::filter(., avg_hr <= max(input$hr_range)) %>%
+           dplyr::filter(., avg_hr >= min(input$hr_range))
         
         validate(
           need(length(vpr_sel_bin$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
         )
         
         #interpolate data
-        vpr_int <- akima::interp(x = vpr_depth_bin$avg_hr, y = vpr_depth_bin$depth, z = vpr_depth_bin$conc_m3, duplicate= 'strip')
+        vpr_int <- akima::interp(x = vpr_sel_bin$avg_hr, y = vpr_sel_bin$depth, z = vpr_sel_bin$conc_m3, duplicate= 'strip')
         
         #set consistent x and y limits
         y_limits <- rev(range(vpr_int$y))
         x_limits <- range(input$hr_range)
         
-        if(max(x_limits) > max(vpr_depth_bin$avg_hr)){
-          x_limits[2] <- max(vpr_depth_bin$avg_hr)
+        if(max(x_limits) > max(vpr_sel_bin$avg_hr)){
+          x_limits[2] <- max(vpr_sel_bin$avg_hr)
         }
         cmpalf <- cmocean::cmocean('matter')
         cmo_data <- cmpalf(100)
@@ -852,9 +869,11 @@ server <- function(input, output, session) {
        
         df <- akima::interp2xyz(vpr_int, data.frame = TRUE)
         
+        
+        
         #make contour plot
         p <- ggplot(df) +
-          geom_tile(aes(x = x, y = y, fill = z)) +
+           geom_tile(aes(x = x, y = y, fill = z)) +
           labs(fill = 'Concentration [m -3]') +
           scale_y_reverse(name = "Depth [m]") +
           scale_x_continuous(name = "Time [h]") +
@@ -862,9 +881,9 @@ server <- function(input, output, session) {
           geom_contour(aes(x = x, y = y, z = z), col = "black") +
           geom_text_contour(aes(x = x, y = y, z = z), col = 'white', check_overlap = TRUE, size = 8)+
           scale_fill_gradientn(colours = cmo_data, na.value = 'gray')+
-          geom_line(data = sel_dat, aes(x = avg_hr, y = depth), col = 'snow4', inherit.aes = TRUE) +
-          geom_point(data = taxa_dat, aes(x = avg_hr, y = (min_depth+max_depth)/2, size = conc_m3), pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
-          geom_point(data = taxa_dat_zero, aes(x = avg_hr, y = min_depth), pch = 7, colour = 'gray', alpha = 0.7) +
+           geom_line(data = sel_dat, aes(x = avg_hr, y = depth), col = 'snow4', inherit.aes = FALSE) +
+           geom_point(data = taxa_dat, aes(x = avg_hr, y = depth, size = conc_m3), inherit.aes = FALSE, pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
+           geom_point(data = taxa_dat_zero, aes(x = avg_hr, y = depth), pch = 7, colour = 'gray', alpha = 0.7) +
           ggtitle("Concentration" ) +
           labs(size = expression("Concentration /m" ^3), fill = expression("Concentration /m" ^3))+
           scale_size_continuous(range = c(0, 20)) +
@@ -922,14 +941,14 @@ server <- function(input, output, session) {
         )
         
         #interpolate data
-        vpr_int <- akima::interp(x = vpr_depth_bin$avg_hr, y = vpr_depth_bin$depth, z = vpr_depth_bin$temperature, duplicate= 'strip')
+        vpr_int <- akima::interp(x = vpr_sel_bin$avg_hr, y = vpr_sel_bin$depth, z = vpr_sel_bin$temperature, duplicate= 'strip')
         
         #set consistent x and y limits
         y_limits <- rev(range(vpr_int$y))
         x_limits <- range(input$hr_range)
         
-        if(max(x_limits) > max(vpr_depth_bin$avg_hr)){
-          x_limits[2] <- max(vpr_depth_bin$avg_hr)
+        if(max(x_limits) > max(vpr_sel_bin$avg_hr)){
+          x_limits[2] <- max(vpr_sel_bin$avg_hr)
         }
         cmpalf <- cmocean::cmocean('thermal')
         cmo_data <- cmpalf(100)
@@ -1014,14 +1033,14 @@ server <- function(input, output, session) {
           need(length(vpr_sel_bin$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
         )
         
-        vpr_int <- akima::interp(x = vpr_depth_bin$avg_hr, y = vpr_depth_bin$depth, z = vpr_depth_bin$salinity, duplicate = 'strip')
+        vpr_int <- akima::interp(x = vpr_sel_bin$avg_hr, y = vpr_sel_bin$depth, z = vpr_sel_bin$salinity, duplicate = 'strip')
         
         #set consistent x and y limits
         y_limits <- rev(range(vpr_int$y))
         x_limits <- range(input$hr_range)
         
-        if(max(x_limits) > max(vpr_depth_bin$avg_hr)){
-          x_limits[2] <- max(vpr_depth_bin$avg_hr)
+        if(max(x_limits) > max(vpr_sel_bin$avg_hr)){
+          x_limits[2] <- max(vpr_sel_bin$avg_hr)
         }
         
         cmpalf <- cmocean::cmocean('haline')
