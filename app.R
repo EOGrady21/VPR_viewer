@@ -719,6 +719,9 @@ server <- function(input, output, session) {
       
         all_dat <- datasetInput()
         
+        all_dat <- all_dat %>%
+          dplyr::mutate(., avg_hr = avg_hr - min(avg_hr))
+        
         all_dat_q <- all_dat %>%
             dplyr::filter(., avg_hr < max(input$hr_range)) %>%
             dplyr::filter(., avg_hr > min(input$hr_range))
