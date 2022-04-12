@@ -4,6 +4,7 @@ library(shinydashboard)
 library(plotly)
 library(magick)
 library(vprr)
+library(plyr)
 
 # this is a minimal working example of how we could get an interactive plotly/shiny 
 # app to display ROI images associated with CTD data
