@@ -675,7 +675,7 @@ server <- function(input, output, session) {
             dplyr::filter(., pressure < max(input$pres_range)) 
         
         validate(
-          need(length(all_dat$time_ms) > 150, 'Too few valid data points available in your desired QC range! Please expand!')
+          need(length(all_dat$time_ms) > 10, 'Too few valid data points available in your desired QC range! Please expand!')
         )
         
         return(all_dat)
@@ -724,7 +724,7 @@ server <- function(input, output, session) {
             dplyr::filter(., avg_hr > min(input$hr_range))
 
         validate(
-          need(length(all_dat_q$time_ms) > 150, 'Too few valid data points available in your desired time range! Please expand!')
+          need(length(all_dat_q$time_ms) > 10, 'Too few valid data points available in your desired time range! Please expand!')
         )
         return(all_dat_q)
     })
