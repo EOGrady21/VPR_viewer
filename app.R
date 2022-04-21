@@ -1371,19 +1371,6 @@ server <- function(input, output, session) {
         
         dimdat_c <- dimdat[dimdat > min(input$size_range) & dimdat < max(input$size_range)]
         
-        # TODO: THIS IS BROKEN
-        # dimdat_c only has valid imgs in size range, but ordered 'custom_index' is then used to index all images
-        # not actually excluding images outside size range
-        # order(dimdat[dimdat %in% dimdat_c]) use something like this?
-        # will then need to write some catch in case number of images requested is more than available in size range
-        # may cause some weird errors because length will be different than total number of ROI images
-        # may have to rework this completely
-        
-        # check that similar problem is not happening with sorted_index
-        
-        # size sorted index for custom and sorted is not actually indexing properly
-       
-        
         
         if(isolate(input$sorting_custom) == 'Small -> Large'){
           dimdat_c_o <- dimdat_c[order(dimdat_c, decreasing = FALSE)]
@@ -1393,8 +1380,7 @@ server <- function(input, output, session) {
             custom_index[[i]] <- which(img_valid() == imgvalid_c[i])
           }
           custom_index <- unlist(custom_index)
-          # custom_index <- which(img_valid() %in% imgvalid_c)
-          # custom_index <- order(dimdat[dimdat %in% dimdat_c], decreasing = FALSE)
+         
         }else if(isolate(input$sorting_custom) == 'Large -> Small'){
           dimdat_c_o <- dimdat_c[order(dimdat_c, decreasing = TRUE)]
           imgvalid_c <- paste0(imgs_path(), names(dimdat_c_o))
@@ -1403,8 +1389,7 @@ server <- function(input, output, session) {
             custom_index[[i]] <- which(img_valid() == imgvalid_c[i])
           }
           custom_index <- unlist(custom_index)
-          # custom_index <- which(img_valid() %in% imgvalid_c)
-          # custom_index <- order(dimdat[dimdat %in% dimdat_c], decreasing = TRUE)
+
         } else if (isolate(input$sorting_custom) == 'Time (default)'){ # TODO: check that this is properly ordered by time
           custom_index <- which(dimdat %in% dimdat_c) # check this line with an example where size subset should be small
         }
