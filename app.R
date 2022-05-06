@@ -536,7 +536,8 @@ server <- function(input, output, session) {
           png(file,
               width = input$shiny_width,
               height = input$shiny_height)
-          ctd_path_plot()
+          p <- ctd_path_plot()
+          print(p)
           dev.off()
         }
       )
@@ -550,7 +551,6 @@ server <- function(input, output, session) {
       # CTD FD profile plot
       output$ctdplot3 <- renderPlot({
         input$update
-        
         ctd_FD_profile_plot()
       })
       
@@ -577,7 +577,8 @@ server <- function(input, output, session) {
           png(file,
               width = input$shiny_width,
               height = input$shiny_height)
-          ctd_t_contour()
+          p <- ctd_t_contour()
+          print(p)
           dev.off()
         }
       )
@@ -594,7 +595,8 @@ server <- function(input, output, session) {
           png(file,
               width = input$shiny_width,
               height = input$shiny_height)
-          ctd_s_contour()
+          p <- ctd_s_contour()
+          print(p)
           dev.off()
         }
       )
@@ -611,7 +613,8 @@ server <- function(input, output, session) {
           png(file,
               width = input$shiny_width,
               height = input$shiny_height)
-          ctd_TS()
+          p <- ctd_TS()
+          print(p)
           dev.off()
         }
       )
@@ -1185,7 +1188,8 @@ server <- function(input, output, session) {
             png(file,
                 width = input$shiny_width,
                 height = input$shiny_height)
-            plot_conc()
+            p <- plot_conc()
+            print(p)
             dev.off()
         }
     )
@@ -1193,7 +1197,8 @@ server <- function(input, output, session) {
     # temperature contour plot
     output$plot3 <- renderPlot({
         input$update
-        plot_conctemp()
+        p <- plot_conctemp()
+        print(p)
     })
     
     output$save3 <- downloadHandler(
@@ -1202,7 +1207,8 @@ server <- function(input, output, session) {
             png(file,
                 width = input$shiny_width,
                 height = input$shiny_height)
-            plot_conctemp()
+            p <- plot_conctemp()
+            print(p)
             dev.off()
         }
     )
@@ -1219,7 +1225,8 @@ server <- function(input, output, session) {
             png(file,
                 width = input$shiny_width,
                 height = input$shiny_height)
-            plot_concsal()
+            p <- plot_concsal()
+            print(p)
             dev.off()
         }
     )
@@ -1236,7 +1243,8 @@ server <- function(input, output, session) {
         png(file,
             width = input$shiny_width,
             height = input$shiny_height)
-        roi_ts_plot()
+        p <- roi_ts_plot()
+        print(p)
         dev.off()
       }
     )
@@ -1253,7 +1261,8 @@ server <- function(input, output, session) {
         png(file,
             width = input$shiny_width,
             height = input$shiny_height)
-        cast_plot()
+        p <- cast_plot()
+        print(p)
         dev.off()
       }
     )
