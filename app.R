@@ -67,8 +67,8 @@ dark <-  bs_theme(bootswatch = 'superhero', version = '5')
                            label = 'VPR CTD version',
                            circle = TRUE,
                            pickerInput(inputId = 'vpr_version', 
-                                       choices = list('DAVPR 27 (BIO)', 'DAVPR 2'),
-                                       selected = 'DAVPR 2')) %>%
+                                       choices = list('DAVPR 27 (BIO)', 'DAVPR 14 (GW)'),
+                                       selected = 'DAVPR 27 (BIO)')) %>%
               helper(content = 'ctd_col_drop')
             )),
             textInput('cruise', 'Cruise ID', placeholder = 'eg. IML2018051', value = 'IML2018051') %>% 
@@ -267,7 +267,7 @@ server <- function(input, output, session) {
         if(input$vpr_version == 'DAVPR 27 (BIO)'){
           ctd_col <- c("time_ms", "conductivity", "temperature", "pressure", "salinity", "NA", "fluorescence_mv",
                         "turbidity_mv", "oxygen_mv", "pitch_deg", "roll_deg", "image_num")
-        } else if(input$vpr_version == 'DAVPR 2') {
+        } else if(input$vpr_version == 'DAVPR 14 (GW)') {
         ctd_col <- c("time_ms", "conductivity", "temperature", "pressure", "salinity", "fluor_ref", "fluorescence_mv",
                      "turbidity_ref", "turbidity_mv", "altitude_NA")
       }
