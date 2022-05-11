@@ -1,6 +1,6 @@
 # Library -----
 suppressWarnings(librarian::shelf(shiny, vprr, magick, ggplot2, metR, dplyr, DT, base64enc, shinyFiles, bslib, thematic,
-                 shinyWidgets, shinyhelper, spelling, exiftoolr, oce, gridExtra, waiter, quiet = TRUE))
+                 shinyWidgets, shinyhelper, spelling, exiftoolr, oce, gridExtra, waiter, akima, quiet = TRUE))
 
 # ExifTool -----
 # install exiftool to check image metadata
@@ -137,18 +137,18 @@ dark <-  bs_theme(bootswatch = 'superhero', version = '5')
                                    column(6, plotOutput("ctdplot2")),
                                    column(6, plotOutput("ctdplot3"))
                                  ),
-                                 fluidRow(
-                                   # temperature contour
-                                   column(3, offset = 9,
-                                          downloadButton('ctdsave4', label = 'Save')),
-                                   column(12, plotOutput("ctdplot4"))
-                                 ),
-                                 fluidRow(
-                                   #salinity contour
-                                   column(3, offset = 9,
-                                          downloadButton('ctdsave5', label = 'Save')),
-                                   column(12, plotOutput("ctdplot5"))
-                                 ),
+                                 # fluidRow(
+                                 #   # temperature contour
+                                 #   column(3, offset = 9,
+                                 #          downloadButton('ctdsave4', label = 'Save')),
+                                 #   column(12, plotOutput("ctdplot4"))
+                                 # ),
+                                 # fluidRow(
+                                 #   #salinity contour
+                                 #   column(3, offset = 9,
+                                 #          downloadButton('ctdsave5', label = 'Save')),
+                                 #   column(12, plotOutput("ctdplot5"))
+                                 # ),
                                  fluidRow(
                                    # TS plot
                                    column(3, offset = 9,
@@ -275,11 +275,22 @@ server <- function(input, output, session) {
         
         ctd_fns <- input$ctd_files
         
-        ctd_dat <- vpr_ctd_read(ctd_fns$datapath, 
-                                station_of_interest = input$station, 
-                                day = input$day, 
-                                hour = input$hour, 
-                                col_list = ctd_col)
+        tryCatch({
+          # danger code
+          ctd_dat <- vpr_ctd_read(ctd_fns$datapath, 
+                                  station_of_interest = input$station, 
+                                  day = input$day, 
+                                  hour = input$hour, 
+                                  col_list = ctd_col)
+          
+        },
+        warning = function(warn){
+          showNotification(paste0(warn), type = 'warning')
+        },
+        error = function(err){
+          showNotification(paste0(err), type = 'err')
+        })
+        
         
         ctd_dat$avg_hr <- ctd_dat$time_ms / 3.6e+06
         
@@ -293,6 +304,8 @@ server <- function(input, output, session) {
         
         return(ctd_dat)
       })
+    
+    # cat(file=stderr(), 'CTD data loaded', "\n")
     
     observeEvent(input$update, {
       # add loading icons
@@ -439,82 +452,116 @@ server <- function(input, output, session) {
         
         }
         
-      ctd_t_contour <- function(){
-          isolate({
-            d <- ctd_dat()
-            ctd_int <- interp::interp(x = d$avg_hr, y = d$depth, z = d$temperature, duplicate= 'strip')
-
-            ctd_int$x <- ctd_int$x - min(ctd_int$x)
-            d$avg_hr <- d$avg_hr - min(d$avg_hr)
-            
-            #set consistent x and y limits
-            y_limits <- rev(range(ctd_int$y))
-            x_limits <- range(ctd_int$x)
-          
-            if(max(x_limits) > max(d$avg_hr)){
-               x_limits[2] <- max(d$avg_hr)
-            }
-          
-            if(min(x_limits) < min(d$avg_hr)){
-              x_limits[1] <- min(d$avg_hr)
-            }
-          
-          cmpalf <- cmocean::cmocean('thermal')
-          #make contour plot
-          filled.contour(ctd_int$x, ctd_int$y, ctd_int$z, nlevels = 50,
-                         color.palette = cmpalf,
-                         ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Interpolated Temperature',
-                         #add anotations
-                         plot.axes = {
-                           #add vpr path
-                           points(d$avg_hr, d$depth, type = 'l')
-                           #add axes
-                           axis(1)
-                           axis(2)
-                           #add contour lines
-                           contour(ctd_int$x, ctd_int$y, ctd_int$z, nlevels=10, add = T)
-                         }) 
-          })
-        }
-        
-      ctd_s_contour <- function(){
-          isolate({
-            d <- ctd_dat()
-            #interpolate data
-            ctd_int <- interp::interp(x = d$avg_hr, y = d$depth, z = d$salinity, duplicate= 'strip')
-            
-            ctd_int$x <- ctd_int$x - min(ctd_int$x)
-            d$avg_hr <- d$avg_hr - min(d$avg_hr)
-            
-            #set consistent x and y limits
-            y_limits <- rev(range(ctd_int$y))
-            x_limits <- range(ctd_int$x)
-            
-            if(max(x_limits) > max(d$avg_hr)){
-              x_limits[2] <- max(d$avg_hr)
-            }
-            
-            if(min(x_limits) < min(d$avg_hr)){
-              x_limits[1] <- min(d$avg_hr)
-            }
-            cmpalf <- cmocean::cmocean('haline')
-            #make contour plot
-            filled.contour(ctd_int$x, ctd_int$y, ctd_int$z, nlevels = 50,
-                           color.palette = cmpalf,
-                           ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Interpolated Salinity',
-                           #add annotations
-                           plot.axes = {
-                             #add vpr path
-                             points(d$avg_hr , d$depth, type = 'l')
-                             #add axes
-                             axis(1)
-                             axis(2)
-                             #add contour lines
-                             contour(ctd_int$x, ctd_int$y, ctd_int$z, nlevels=10, add = T)
-                           })
-          })
-        }
-        
+      # ctd_t_contour <- function(){
+      #     isolate({
+      #       d <- ctd_dat()
+      #       
+      #       tryCatch({
+      #         # danger code
+      #         # browser()
+      #         # ctd_int <- akima::interp(x = d$avg_hr, y = d$depth, z = d$temperature, duplicate= 'strip')
+      #         ctd_int_o <- oce::interpBarnes(x = d$avg_hr, y = d$depth, z = d$temperature )
+      #         ctd_int <- NULL
+      #         ctd_int$x <- ctd_int_o$xg
+      #         ctd_int$y <- ctd_int_o$yg
+      #         ctd_int$z <- ctd_int_o$zg
+      #         cat(file=stderr(), 'interpolation complete (1/2)', "\n")
+      #       },
+      #       warning = function(warn){
+      #         showNotification(paste0(warn), type = 'warning')
+      #       },
+      #       error = function(err){
+      #         showNotification(paste0(err), type = 'err')
+      #       })
+      #       
+      # 
+      #       ctd_int$x <- ctd_int$x - min(ctd_int$x)
+      #       d$avg_hr <- d$avg_hr - min(d$avg_hr)
+      #       
+      #       #set consistent x and y limits
+      #       y_limits <- rev(range(ctd_int$y))
+      #       x_limits <- range(ctd_int$x)
+      #     
+      #       if(max(x_limits) > max(d$avg_hr)){
+      #          x_limits[2] <- max(d$avg_hr)
+      #       }
+      #     
+      #       if(min(x_limits) < min(d$avg_hr)){
+      #         x_limits[1] <- min(d$avg_hr)
+      #       }
+      #     
+      #     cmpalf <- cmocean::cmocean('thermal')
+      #     #make contour plot
+      #     filled.contour(ctd_int$x, ctd_int$y, ctd_int$z, nlevels = 50,
+      #                    color.palette = cmpalf,
+      #                    ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Interpolated Temperature',
+      #                    #add anotations
+      #                    plot.axes = {
+      #                      #add vpr path
+      #                      points(d$avg_hr, d$depth, type = 'l')
+      #                      #add axes
+      #                      axis(1)
+      #                      axis(2)
+      #                      #add contour lines
+      #                      contour(ctd_int$x, ctd_int$y, ctd_int$z, nlevels=10, add = T)
+      #                    }) 
+      #     })
+      #   }
+      #   
+      # ctd_s_contour <- function(){
+      #     isolate({
+      #       d <- ctd_dat()
+      #       tryCatch({
+      #         # danger code
+      #         #interpolate data
+      #         # ctd_int <- akima::interp(x = d$avg_hr, y = d$depth, z = d$salinity, duplicate= 'strip')
+      #         ctd_int_o <- oce::interpBarnes(x = d$avg_hr, y = d$depth, z = d$salinity )
+      #         ctd_int <- NULL
+      #         ctd_int$x <- ctd_int_o$xg
+      #         ctd_int$y <- ctd_int_o$yg
+      #         ctd_int$z <- ctd_int_o$zg
+      #         cat(file=stderr(), 'interpolation complete (2/2)', "\n")
+      #       },
+      #       warning = function(warn){
+      #         showNotification(paste0(warn), type = 'warning')
+      #       },
+      #       error = function(err){
+      #         showNotification(paste0(err), type = 'err')
+      #       })
+      #       
+      #        
+      #       ctd_int$x <- ctd_int$x - min(ctd_int$x)
+      #       d$avg_hr <- d$avg_hr - min(d$avg_hr)
+      #       
+      #       #set consistent x and y limits
+      #       y_limits <- rev(range(ctd_int$y))
+      #       x_limits <- range(ctd_int$x)
+      #       
+      #       if(max(x_limits) > max(d$avg_hr)){
+      #         x_limits[2] <- max(d$avg_hr)
+      #       }
+      #       
+      #       if(min(x_limits) < min(d$avg_hr)){
+      #         x_limits[1] <- min(d$avg_hr)
+      #       }
+      #       cmpalf <- cmocean::cmocean('haline')
+      #       #make contour plot
+      #       filled.contour(ctd_int$x, ctd_int$y, ctd_int$z, nlevels = 50,
+      #                      color.palette = cmpalf,
+      #                      ylim = y_limits, xlim = x_limits, xlab = "Time (h)", ylab = "Depth (m)", main = 'Interpolated Salinity',
+      #                      #add annotations
+      #                      plot.axes = {
+      #                        #add vpr path
+      #                        points(d$avg_hr , d$depth, type = 'l')
+      #                        #add axes
+      #                        axis(1)
+      #                        axis(2)
+      #                        #add contour lines
+      #                        contour(ctd_int$x, ctd_int$y, ctd_int$z, nlevels=10, add = T)
+      #                      })
+      #     })
+      #   }
+      #   
       ctd_TS <- function() {
           isolate({
             ctd_oce <- vpr_oce_create(ctd_dat())
@@ -566,40 +613,40 @@ server <- function(input, output, session) {
       )
       
       # CTD Temp Contour plot
-      output$ctdplot4 <- renderPlot({
-        input$update
-        ctd_t_contour()
-      })
+      # output$ctdplot4 <- renderPlot({
+      #   input$update
+      #   ctd_t_contour()
+      # })
       
-      output$ctdsave4 <- downloadHandler(
-        filename = paste0(input$cruise, "_CTD", input$tow, "_d", input$day, "_h", input$hour, "_temp_contour_plot.png"), 
-        content = function(file) {
-          png(file,
-              width = input$shiny_width,
-              height = input$shiny_height)
-          p <- ctd_t_contour()
-          print(p)
-          dev.off()
-        }
-      )
+      # output$ctdsave4 <- downloadHandler(
+      #   filename = paste0(input$cruise, "_CTD", input$tow, "_d", input$day, "_h", input$hour, "_temp_contour_plot.png"), 
+      #   content = function(file) {
+      #     png(file,
+      #         width = input$shiny_width,
+      #         height = input$shiny_height)
+      #     p <- ctd_t_contour()
+      #     print(p)
+      #     dev.off()
+      #   }
+      # )
       
-      # CTD Salinity Contour plot
-      output$ctdplot5 <- renderPlot({
-        input$update
-        ctd_s_contour()
-      })
-      
-      output$ctdsave5 <- downloadHandler(
-        filename = paste0(input$cruise, "_CTD", input$tow, "_d", input$day, "_h", input$hour, "_sal_contour_plot.png"), 
-        content = function(file) {
-          png(file,
-              width = input$shiny_width,
-              height = input$shiny_height)
-          p <- ctd_s_contour()
-          print(p)
-          dev.off()
-        }
-      )
+      # # CTD Salinity Contour plot
+      # output$ctdplot5 <- renderPlot({
+      #   input$update
+      #   ctd_s_contour()
+      # })
+      # 
+      # output$ctdsave5 <- downloadHandler(
+      #   filename = paste0(input$cruise, "_CTD", input$tow, "_d", input$day, "_h", input$hour, "_sal_contour_plot.png"), 
+      #   content = function(file) {
+      #     png(file,
+      #         width = input$shiny_width,
+      #         height = input$shiny_height)
+      #     p <- ctd_s_contour()
+      #     print(p)
+      #     dev.off()
+      #   }
+      # )
       
       # CTD TS plot
       output$ctdplot6 <- renderPlot({
@@ -620,6 +667,7 @@ server <- function(input, output, session) {
       )
 
 # * Load VPR data ----   
+      # cat(file=stderr(), 'VPR data loading started', "\n")
     datasetInput <- reactive({
         # get CTD data
         ctd_dat <- ctd_dat() 
@@ -735,6 +783,7 @@ server <- function(input, output, session) {
         return(all_dat_q)
     })
 
+    # cat(file=stderr(), 'VPR data loading complete', "\n")
 # * Output data table ----
     output$ctdroi <- renderDataTable({
         input$update
@@ -1266,6 +1315,8 @@ server <- function(input, output, session) {
         dev.off()
       }
     )
+    
+    # cat(file=stderr(), 'VPR plots complete', "\n")
 # * Image data loading ----
     shinyDirChoose(input, 'dir',roots = c('C:/' = 'C:/', 'D:/' = 'D:/', 'E:/' = 'E:/', 'F:/' = 'F:/'  )  )
     dir <- reactive(input$dir)
@@ -1455,6 +1506,7 @@ server <- function(input, output, session) {
     })
    
 # * Output Image Gallery ----
+    # cat(file=stderr(), 'Images loading', "\n")
     # output first column of images
     output$image <- renderImage({
       input$update 
