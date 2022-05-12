@@ -2,6 +2,7 @@
 suppressWarnings(librarian::shelf(shiny, vprr, magick, ggplot2, metR, dplyr, DT, base64enc, shinyFiles, bslib, thematic,
                  shinyWidgets, shinyhelper, spelling, exiftoolr, oce, gridExtra, waiter, akima, quiet = TRUE))
 
+source('functions.r')
 # ExifTool -----
 # install exiftool to check image metadata
 # required when run on new machine
@@ -981,29 +982,57 @@ server <- function(input, output, session) {
       isolate({
         vpr_depth_bin <- binnedData()
         all_dat <- datasetInput()
+       # browser()
+        # pull in full CTD dataset
+        # ctd_dat <- ctd_dat()
+        # bin CTD data
+        ctd_oce <- vpr_oce_create(ctd_dat())
+        
+        # vpr_depth_bin <- bin_cast(ctd_roi_oce = ctd_roi_oce , imageVolume = input$imageVolume, binSize = input$binSize, rev = TRUE)
+        #seperate into up and down casts before binning data
+        #find upcasts
+        ctdupcast <- ctd_cast(data = ctd_oce, cast_direction = 'ascending', data_type = 'df')
+        ctdupcast2 <- lapply(X =  ctdupcast, FUN = ctd_bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
+        ctdupcast_df <- do.call(rbind,  ctdupcast2)
+        #find downcasts
+        ctddowncast <- ctd_cast(ctd_oce, "descending", "df")
+        ctddowncast2 <- lapply(X =  ctddowncast, FUN = ctd_bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
+        ctddowncast_df <- do.call(rbind,  ctddowncast2)
+        #combine_data into bins
+        ctd_bin <- rbind( ctdupcast_df,  ctddowncast_df)
+        ctd_bin <- data.frame(ctd_bin) %>%
+          dplyr::mutate(., avg_hr = avg_hr - min(all_dat$avg_hr))
+        
+       remove(ctd_oce, ctdupcast, ctdupcast2, ctdupcast_df, ctddowncast,ctddowncast2, ctddowncast_df )
+       
+         
         
         vpr_sel_bin <- vpr_depth_bin %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
-        
+
         sel_dat <- all_dat %>%
           dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
+        ctd_bin <- ctd_bin %>%
+             dplyr::filter(., avg_hr < max(input$hr_range)) %>%
+             dplyr::filter(., avg_hr > min(input$hr_range))
         
         validate(
           need(length(vpr_sel_bin$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
         )
         
         #interpolate data
-        vpr_int <- akima::interp(x = vpr_sel_bin$avg_hr, y = vpr_sel_bin$depth, z = vpr_sel_bin$temperature, duplicate= 'strip')
+        # vpr_int <- akima::interp(x = vpr_sel_bin$avg_hr, y = vpr_sel_bin$depth, z = vpr_sel_bin$temperature, duplicate= 'strip')
+        ctd_int <- interp::interp(x = ctd_bin$avg_hr, y = ctd_bin$depth , z = ctd_bin$temperature, duplicate = 'strip')
         
         #set consistent x and y limits
-        y_limits <- rev(range(vpr_int$y))
+        y_limits <- rev(range(ctd_int$y))
         x_limits <- range(input$hr_range)
         
-        if(max(x_limits) > max(vpr_sel_bin$avg_hr)){
-          x_limits[2] <- max(vpr_sel_bin$avg_hr)
+        if(max(x_limits) > max(ctd_bin$avg_hr)){
+          x_limits[2] <- max(ctd_bin$avg_hr)
         }
         cmpalf <- cmocean::cmocean('thermal')
         cmo_data <- cmpalf(100)
@@ -1016,10 +1045,11 @@ server <- function(input, output, session) {
           dplyr::filter(., conc_m3 > 0)
         
         
-        df <- akima::interp2xyz(vpr_int, data.frame = TRUE)
+        # df <- akima::interp2xyz(vpr_int, data.frame = TRUE)
+        ctd_df <- akima::interp2xyz(ctd_int, data.frame = TRUE)
         
         #make contour plot
-        p <- ggplot(df) +
+        p <- ggplot(ctd_df) +
           geom_tile(aes(x = x, y = y, fill = z)) +
           labs(fill = 'Temperature [deg C]') +
           scale_y_reverse(name = "Depth [m]") +
@@ -1028,7 +1058,7 @@ server <- function(input, output, session) {
           geom_contour(aes(x = x, y = y, z = z), col = "black") +
           geom_text_contour(aes(x = x, y = y, z = z), col = 'white', check_overlap = TRUE, size = 8)+
           scale_fill_gradientn(colours = cmo_data, na.value = 'gray')+
-          geom_line(data = sel_dat, aes(x = avg_hr , y = depth), col = 'snow4', inherit.aes = FALSE) +
+          geom_line(data = ctd_bin, aes(x = avg_hr , y = depth), col = 'snow4', inherit.aes = FALSE) +
           geom_point(data = taxa_dat, aes(x = avg_hr, y = (min_depth+max_depth)/2, size = conc_m3), pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
           geom_point(data = taxa_dat_zero, aes(x = avg_hr, y = min_depth), pch = 7, colour = 'gray', alpha = 0.7) +
           ggtitle("Concentration over Temperature" ) +
@@ -1074,6 +1104,28 @@ server <- function(input, output, session) {
       isolate({
         vpr_depth_bin <- binnedData()
         all_dat <- datasetInput()
+        # bin CTD data
+        
+        ctd_oce <- vpr_oce_create(ctd_dat())
+        
+        # vpr_depth_bin <- bin_cast(ctd_roi_oce = ctd_roi_oce , imageVolume = input$imageVolume, binSize = input$binSize, rev = TRUE)
+        #seperate into up and down casts before binning data
+        #find upcasts
+        ctdupcast <- ctd_cast(data = ctd_oce, cast_direction = 'ascending', data_type = 'df')
+        ctdupcast2 <- lapply(X =  ctdupcast, FUN = ctd_bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
+        ctdupcast_df <- do.call(rbind,  ctdupcast2)
+        #find downcasts
+        ctddowncast <- ctd_cast(ctd_oce, "descending", "df")
+        ctddowncast2 <- lapply(X =  ctddowncast, FUN = ctd_bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
+        ctddowncast_df <- do.call(rbind,  ctddowncast2)
+        #combine_data into bins
+        ctd_bin <- rbind( ctdupcast_df,  ctddowncast_df)
+         ctd_bin <- data.frame(ctd_bin)  %>%
+           dplyr::mutate(., avg_hr = avg_hr - min(all_dat$avg_hr))
+        
+        remove(ctd_oce, ctdupcast, ctdupcast2, ctdupcast_df, ctddowncast,ctddowncast2, ctddowncast_df )
+        
+       
         
         vpr_sel_bin <- vpr_depth_bin %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
@@ -1084,18 +1136,24 @@ server <- function(input, output, session) {
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
         
+        ctd_bin <- ctd_bin %>%
+          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
+          dplyr::filter(., avg_hr > min(input$hr_range))
+        
+        
         validate(
           need(length(vpr_sel_bin$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
         )
         
-        vpr_int <- akima::interp(x = vpr_sel_bin$avg_hr, y = vpr_sel_bin$depth, z = vpr_sel_bin$salinity, duplicate = 'strip')
+        # vpr_int <- akima::interp(x = vpr_sel_bin$avg_hr, y = vpr_sel_bin$depth, z = vpr_sel_bin$salinity, duplicate = 'strip')
+        ctd_int <- interp::interp(x = ctd_bin$avg_hr, y = ctd_bin$depth , z = ctd_bin$salinity, duplicate = 'strip')
         
         #set consistent x and y limits
-        y_limits <- rev(range(vpr_int$y))
+        y_limits <- rev(range(ctd_int$y))
         x_limits <- range(input$hr_range)
         
-        if(max(x_limits) > max(vpr_sel_bin$avg_hr)){
-          x_limits[2] <- max(vpr_sel_bin$avg_hr)
+        if(max(x_limits) > max(ctd_bin$avg_hr)){
+          x_limits[2] <- max(ctd_bin$avg_hr)
         }
         
         cmpalf <- cmocean::cmocean('haline')
@@ -1109,10 +1167,11 @@ server <- function(input, output, session) {
           dplyr::filter(., conc_m3 > 0)
         
         
-        df <- akima::interp2xyz(vpr_int, data.frame = TRUE)
+        # df <- akima::interp2xyz(vpr_int, data.frame = TRUE)
+        ctd_df <- akima::interp2xyz(ctd_int, data.frame = TRUE)
         
         #make contour plot
-        p <- ggplot(df) +
+        p <- ggplot(ctd_df) +
           geom_tile(aes(x = x, y = y, fill = z)) +
           labs(fill = 'Salinity [PSU]') +
           scale_y_reverse(name = "Depth [m]") +
@@ -1121,7 +1180,7 @@ server <- function(input, output, session) {
           geom_contour(aes(x = x, y = y, z = z), col = "black") +
           geom_text_contour(aes(x = x, y = y, z = z), col = 'white', check_overlap = TRUE, size = 8)+
           scale_fill_gradientn(colours = cmo_data, na.value = 'gray')+
-          geom_line(data = sel_dat, aes(x = avg_hr, y = depth), col = 'snow4', inherit.aes = FALSE) +
+          geom_line(data = ctd_bin, aes(x = avg_hr, y = depth), col = 'snow4', inherit.aes = FALSE) +
           geom_point(data = taxa_dat, aes(x = avg_hr, y = (min_depth+max_depth)/2, size = conc_m3), pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
           geom_point(data = taxa_dat_zero, aes(x = avg_hr, y = min_depth), pch = 7, colour = 'gray', alpha = 0.7) +
           ggtitle("Concentration over Salinity" ) +
