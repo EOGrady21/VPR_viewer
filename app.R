@@ -305,6 +305,7 @@ server <- function(input, output, session) {
         
         return(ctd_dat)
       })
+   
     
     # cat(file=stderr(), 'CTD data loaded', "\n")
     
@@ -783,6 +784,31 @@ server <- function(input, output, session) {
         )
         return(all_dat_q)
     })
+    
+    ctd_bin <- reactive({
+      # pull in full CTD dataset
+      # ctd_dat <- ctd_dat()
+      # bin CTD data
+      all_dat <- datasetInput()
+      ctd_oce <- vpr_oce_create(ctd_dat())
+      
+      # vpr_depth_bin <- bin_cast(ctd_roi_oce = ctd_roi_oce , imageVolume = input$imageVolume, binSize = input$binSize, rev = TRUE)
+      #seperate into up and down casts before binning data
+      #find upcasts
+      ctdupcast <- ctd_cast(data = ctd_oce, cast_direction = 'ascending', data_type = 'df')
+      ctdupcast2 <- lapply(X =  ctdupcast, FUN = ctd_bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
+      ctdupcast_df <- do.call(rbind,  ctdupcast2)
+      #find downcasts
+      ctddowncast <- ctd_cast(ctd_oce, "descending", "df")
+      ctddowncast2 <- lapply(X =  ctddowncast, FUN = ctd_bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
+      ctddowncast_df <- do.call(rbind,  ctddowncast2)
+      #combine_data into bins
+      ctd_bin <- rbind( ctdupcast_df,  ctddowncast_df)
+      ctd_bin <- data.frame(ctd_bin) %>%
+        dplyr::mutate(., avg_hr = avg_hr - min(all_dat$avg_hr))
+      return(ctd_bin)
+      
+    })
 
     # cat(file=stderr(), 'VPR data loading complete', "\n")
 # * Output data table ----
@@ -898,6 +924,10 @@ server <- function(input, output, session) {
            dplyr::filter(., avg_hr <= max(input$hr_range)) %>%
            dplyr::filter(., avg_hr >= min(input$hr_range))
         
+        ctd_bin <- ctd_bin() %>%
+          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
+          dplyr::filter(., avg_hr > min(input$hr_range))
+        
         validate(
           need(length(vpr_sel_bin$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
         )
@@ -937,7 +967,7 @@ server <- function(input, output, session) {
           geom_contour(aes(x = x, y = y, z = z), col = "black") +
           geom_text_contour(aes(x = x, y = y, z = z), col = 'white', check_overlap = TRUE, size = 8)+
           scale_fill_gradientn(colours = cmo_data, na.value = 'gray')+
-           geom_line(data = sel_dat, aes(x = avg_hr, y = depth), col = 'snow4', inherit.aes = FALSE) +
+           geom_line(data = ctd_bin, aes(x = avg_hr, y = depth), col = 'snow4', inherit.aes = FALSE) +
            geom_point(data = taxa_dat, aes(x = avg_hr, y = depth, size = conc_m3), inherit.aes = FALSE, pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
            geom_point(data = taxa_dat_zero, aes(x = avg_hr, y = depth), pch = 7, colour = 'gray', alpha = 0.7) +
           ggtitle("Concentration" ) +
@@ -983,29 +1013,7 @@ server <- function(input, output, session) {
         vpr_depth_bin <- binnedData()
         all_dat <- datasetInput()
        # browser()
-        # pull in full CTD dataset
-        # ctd_dat <- ctd_dat()
-        # bin CTD data
-        ctd_oce <- vpr_oce_create(ctd_dat())
-        
-        # vpr_depth_bin <- bin_cast(ctd_roi_oce = ctd_roi_oce , imageVolume = input$imageVolume, binSize = input$binSize, rev = TRUE)
-        #seperate into up and down casts before binning data
-        #find upcasts
-        ctdupcast <- ctd_cast(data = ctd_oce, cast_direction = 'ascending', data_type = 'df')
-        ctdupcast2 <- lapply(X =  ctdupcast, FUN = ctd_bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
-        ctdupcast_df <- do.call(rbind,  ctdupcast2)
-        #find downcasts
-        ctddowncast <- ctd_cast(ctd_oce, "descending", "df")
-        ctddowncast2 <- lapply(X =  ctddowncast, FUN = ctd_bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
-        ctddowncast_df <- do.call(rbind,  ctddowncast2)
-        #combine_data into bins
-        ctd_bin <- rbind( ctdupcast_df,  ctddowncast_df)
-        ctd_bin <- data.frame(ctd_bin) %>%
-          dplyr::mutate(., avg_hr = avg_hr - min(all_dat$avg_hr))
-        
-       remove(ctd_oce, ctdupcast, ctdupcast2, ctdupcast_df, ctddowncast,ctddowncast2, ctddowncast_df )
-       
-         
+    
         
         vpr_sel_bin <- vpr_depth_bin %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
@@ -1015,7 +1023,8 @@ server <- function(input, output, session) {
           dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
-        ctd_bin <- ctd_bin %>%
+        
+        ctd_bin <- ctd_bin() %>%
              dplyr::filter(., avg_hr < max(input$hr_range)) %>%
              dplyr::filter(., avg_hr > min(input$hr_range))
         
@@ -1104,28 +1113,7 @@ server <- function(input, output, session) {
       isolate({
         vpr_depth_bin <- binnedData()
         all_dat <- datasetInput()
-        # bin CTD data
-        
-        ctd_oce <- vpr_oce_create(ctd_dat())
-        
-        # vpr_depth_bin <- bin_cast(ctd_roi_oce = ctd_roi_oce , imageVolume = input$imageVolume, binSize = input$binSize, rev = TRUE)
-        #seperate into up and down casts before binning data
-        #find upcasts
-        ctdupcast <- ctd_cast(data = ctd_oce, cast_direction = 'ascending', data_type = 'df')
-        ctdupcast2 <- lapply(X =  ctdupcast, FUN = ctd_bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
-        ctdupcast_df <- do.call(rbind,  ctdupcast2)
-        #find downcasts
-        ctddowncast <- ctd_cast(ctd_oce, "descending", "df")
-        ctddowncast2 <- lapply(X =  ctddowncast, FUN = ctd_bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
-        ctddowncast_df <- do.call(rbind,  ctddowncast2)
-        #combine_data into bins
-        ctd_bin <- rbind( ctdupcast_df,  ctddowncast_df)
-         ctd_bin <- data.frame(ctd_bin)  %>%
-           dplyr::mutate(., avg_hr = avg_hr - min(all_dat$avg_hr))
-        
-        remove(ctd_oce, ctdupcast, ctdupcast2, ctdupcast_df, ctddowncast,ctddowncast2, ctddowncast_df )
-        
-       
+      
         
         vpr_sel_bin <- vpr_depth_bin %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
@@ -1136,7 +1124,7 @@ server <- function(input, output, session) {
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
         
-        ctd_bin <- ctd_bin %>%
+        ctd_bin <- ctd_bin() %>%
           dplyr::filter(., avg_hr < max(input$hr_range)) %>%
           dplyr::filter(., avg_hr > min(input$hr_range))
         
