@@ -790,7 +790,15 @@ server <- function(input, output, session) {
       # ctd_dat <- ctd_dat()
       # bin CTD data
       all_dat <- datasetInput()
-      ctd_oce <- vpr_oce_create(ctd_dat())
+      
+      ctd_dat <- ctd_dat() %>% #filter data based on parameter ranges 
+        dplyr::filter(., salinity > min(input$sal_range)) %>%
+        dplyr::filter(., salinity < max(input$sal_range)) %>%
+        dplyr::filter(., temperature > min(input$temp_range)) %>%
+        dplyr::filter(., temperature < max(input$temp_range)) %>%
+        dplyr::filter(., pressure > min(input$pres_range)) %>%
+        dplyr::filter(., pressure < max(input$pres_range)) 
+      ctd_oce <- vpr_oce_create(ctd_dat)
       
       # vpr_depth_bin <- bin_cast(ctd_roi_oce = ctd_roi_oce , imageVolume = input$imageVolume, binSize = input$binSize, rev = TRUE)
       #seperate into up and down casts before binning data
