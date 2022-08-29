@@ -293,7 +293,7 @@ server <- function(input, output, session) {
         })
         
         
-        ctd_dat$avg_hr <- ctd_dat$time_ms / 3.6e+06
+        ctd_dat$time_hr <- ctd_dat$time_ms / 3.6e+06
         
         # check metadata 
         # ONLY CHECKS HOUR, DEV REQ
@@ -349,7 +349,7 @@ server <- function(input, output, session) {
                               value = c(floor(min(ctd_dat()$pressure, na.rm = TRUE)),
                                         ceiling(max(ctd_dat()$pressure, na.rm = TRUE))))
       
-      mval <- max(ctd_dat()$avg_hr) - min(ctd_dat()$avg_hr)
+      mval <- max(ctd_dat()$time_hr) - min(ctd_dat()$time_hr)
       updateNumericRangeInput(session,
                               inputId = 'hr_range',
                               value = c(0,
@@ -376,7 +376,7 @@ server <- function(input, output, session) {
                                         ceiling(max(dat_qc()$pressure, na.rm = TRUE))) 
       )
       # hr range
-      mval <- max(dat_qc()$avg_hr) - min(dat_qc()$avg_hr)
+      mval <- max(dat_qc()$time_hr) - min(dat_qc()$time_hr)
       updateNumericRangeInput(session,
                               inputId = 'hr_range',
                               value = c(0,
@@ -440,9 +440,9 @@ server <- function(input, output, session) {
       ctd_path_plot <- function(){
           isolate({
             ctd_dat <- ctd_dat() %>%
-              dplyr::mutate(., avg_hr = avg_hr - min(avg_hr, na.rm = TRUE))
+              dplyr::mutate(., time_hr = time_hr - min(time_hr, na.rm = TRUE))
             ggplot(data = ctd_dat ) +
-              geom_point(aes(avg_hr, pressure)) +
+              geom_point(aes(time_hr, pressure)) +
               scale_x_continuous(name = 'Time [hr]') +
               scale_y_reverse(name = 'Pressure [db]') + 
               ggtitle(label = 'CTD/ VPR Path') + 
@@ -715,7 +715,7 @@ server <- function(input, output, session) {
         
         #add  time(hr) to combined data frame
         all_dat <- all_dat %>%
-            dplyr::mutate(., avg_hr = time_ms/3.6e+06) #%>%
+            dplyr::mutate(., time_hr = time_ms/3.6e+06) #%>%
              #dplyr::mutate(., avg_hr = avg_hr - min(avg_hr))
           
         
@@ -764,7 +764,7 @@ server <- function(input, output, session) {
         
         #zero time values for neat plot axes 
         vpr_depth_bin <- vpr_depth_bin %>%
-          dplyr::mutate(., avg_hr = avg_hr - min(all_dat$avg_hr)) # EOG: fixes issue where data was not aligning between all data and binned data
+          dplyr::mutate(., time_hr = time_hr - min(all_dat$time_hr)) # EOG: fixes issue where data was not aligning between all data and binned data
     })
     
     # filter data by time
@@ -773,11 +773,11 @@ server <- function(input, output, session) {
         all_dat <- datasetInput()
         
         all_dat <- all_dat %>%
-          dplyr::mutate(., avg_hr = avg_hr - min(avg_hr))
+          dplyr::mutate(., time_hr = time_hr - min(time_hr))
         
         all_dat_q <- all_dat %>%
-            dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-            dplyr::filter(., avg_hr > min(input$hr_range))
+            dplyr::filter(., time_hr < max(input$hr_range)) %>%
+            dplyr::filter(., time_hr > min(input$hr_range))
 
         validate(
           need(length(all_dat_q$time_ms) > 10, 'Too few valid data points available in your desired time range! Please expand!')
@@ -804,16 +804,26 @@ server <- function(input, output, session) {
       #seperate into up and down casts before binning data
       #find upcasts
       ctdupcast <- ctd_cast(data = ctd_oce, cast_direction = 'ascending', data_type = 'df')
+      # THIS IS A TEMPORARY FIX WORKAROUND DUE TO CHANGES IN COLUMN NAMING !!! SHOULD BE FIXED ASAP (EOG AUG 2022)
+       ctdupcast <- lapply(ctdupcast, rename, avg_hr = time_hr)
+          # ctdupcast[[1]] <- ctdupcast[[1]] %>% rename(avg_hr = time_hr)
+          
       ctdupcast2 <- lapply(X =  ctdupcast, FUN = ctd_bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
       ctdupcast_df <- do.call(rbind,  ctdupcast2)
       #find downcasts
       ctddowncast <- ctd_cast(ctd_oce, "descending", "df")
+      # THIS IS A TEMPORARY FIX WORKAROUND DUE TO CHANGES IN COLUMN NAMING !!! SHOULD BE FIXED ASAP (EOG AUG 2022)
+      ctddowncast <- lapply(ctddowncast, rename, avg_hr = time_hr)
+      
+      # ctddowncast[[1]] <- ctddowncast[[1]] %>% rename(avg_hr = time_hr)
+      
       ctddowncast2 <- lapply(X =  ctddowncast, FUN = ctd_bin_calculate, binSize = input$binSize, imageVolume = input$imageVolume, rev = TRUE)
       ctddowncast_df <- do.call(rbind,  ctddowncast2)
       #combine_data into bins
       ctd_bin <- rbind( ctdupcast_df,  ctddowncast_df)
-      ctd_bin <- data.frame(ctd_bin) %>%
-        dplyr::mutate(., avg_hr = avg_hr - min(all_dat$avg_hr))
+       ctd_bin <- data.frame(ctd_bin) %>%
+         rename(time_hr = avg_hr)%>%
+         dplyr::mutate(., time_hr = time_hr - min(all_dat$time_hr))
       return(ctd_bin)
       
     })
@@ -840,7 +850,7 @@ server <- function(input, output, session) {
             cat(paste(' >>>>  Time ', '\n'));
             cat(paste('Data points: ', length(all_dat$time_ms), '\n'));
             cat(paste('Range: ', min(all_dat$time_ms),' - ', max(all_dat$time_ms), ' (ms) ', '\n'));
-            cat(paste('Range: ', min(all_dat$avg_hr),' - ', max(all_dat$avg_hr), ' (hr) ', '\n'))
+            cat(paste('Range: ', min(all_dat$time_hr),' - ', max(all_dat$time_hr), ' (hr) ', '\n'))
 
             cat(paste(' >>>>  Conductivity ', '\n'))
             cat(paste('Data points: ', length(all_dat$conductivity), '\n'))
@@ -885,11 +895,11 @@ server <- function(input, output, session) {
             vpr_depth_bin <- binnedData()
             
             vpr_sel <- vpr_depth_bin %>%
-                dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-                dplyr::filter(., avg_hr > min(input$hr_range))
+                dplyr::filter(., time_hr < max(input$hr_range)) %>%
+                dplyr::filter(., time_hr > min(input$hr_range))
             
             validate(
-              need(length(vpr_sel$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
+              need(length(vpr_sel$time_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
             )
 
             ctd_plots <- vpr_plot_profile(taxa_conc_n = vpr_sel, taxa_to_plot = NULL, plot_conc = FALSE)
@@ -923,32 +933,32 @@ server <- function(input, output, session) {
         all_dat <- datasetInput()
         
         vpr_sel_bin <- vpr_depth_bin %>%
-          # dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
-           dplyr::filter(., avg_hr <= max(input$hr_range)) %>%
-           dplyr::filter(., avg_hr >= min(input$hr_range))
+          # dplyr::mutate(., time_hr = avg_hr - min(avg_hr)) %>%
+           dplyr::filter(., time_hr <= max(input$hr_range)) %>%
+           dplyr::filter(., time_hr >= min(input$hr_range))
         
         sel_dat <- all_dat %>%
-           dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
-           dplyr::filter(., avg_hr <= max(input$hr_range)) %>%
-           dplyr::filter(., avg_hr >= min(input$hr_range))
+           dplyr::mutate(., time_hr = time_hr - min(time_hr)) %>%
+           dplyr::filter(., time_hr <= max(input$hr_range)) %>%
+           dplyr::filter(., time_hr >= min(input$hr_range))
         
         ctd_bin <- ctd_bin() %>%
-          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-          dplyr::filter(., avg_hr > min(input$hr_range))
+          dplyr::filter(., time_hr < max(input$hr_range)) %>%
+          dplyr::filter(., time_hr > min(input$hr_range))
         
         validate(
-          need(length(vpr_sel_bin$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
+          need(length(vpr_sel_bin$time_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
         )
         
         #interpolate data
-        vpr_int <- akima::interp(x = vpr_sel_bin$avg_hr, y = vpr_sel_bin$depth, z = vpr_sel_bin$conc_m3, duplicate= 'strip')
+        vpr_int <- akima::interp(x = vpr_sel_bin$time_hr, y = vpr_sel_bin$depth, z = vpr_sel_bin$conc_m3, duplicate= 'strip')
         
         #set consistent x and y limits
         y_limits <- rev(range(vpr_int$y))
         x_limits <- range(input$hr_range)
         
-        if(max(x_limits) > max(vpr_sel_bin$avg_hr)){
-          x_limits[2] <- max(vpr_sel_bin$avg_hr)
+        if(max(x_limits) > max(vpr_sel_bin$time_hr)){
+          x_limits[2] <- max(vpr_sel_bin$time_hr)
         }
         cmpalf <- cmocean::cmocean('matter')
         cmo_data <- cmpalf(100)
@@ -975,9 +985,9 @@ server <- function(input, output, session) {
           geom_contour(aes(x = x, y = y, z = z), col = "black") +
           geom_text_contour(aes(x = x, y = y, z = z), col = 'white', check_overlap = TRUE, size = 8)+
           scale_fill_gradientn(colours = cmo_data, na.value = 'gray')+
-           geom_line(data = ctd_bin, aes(x = avg_hr, y = depth), col = 'snow4', inherit.aes = FALSE) +
-           geom_point(data = taxa_dat, aes(x = avg_hr, y = depth, size = conc_m3), inherit.aes = FALSE, pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
-           geom_point(data = taxa_dat_zero, aes(x = avg_hr, y = depth), pch = 7, colour = 'gray', alpha = 0.7) +
+           geom_line(data = ctd_bin, aes(x = time_hr, y = depth), col = 'snow4', inherit.aes = FALSE) +
+           geom_point(data = taxa_dat, aes(x = time_hr, y = depth, size = conc_m3), inherit.aes = FALSE, pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
+           geom_point(data = taxa_dat_zero, aes(x = time_hr, y = depth), pch = 7, colour = 'gray', alpha = 0.7) +
           ggtitle("Concentration" ) +
           labs(size = expression("Concentration /m" ^3), fill = expression("Concentration /m" ^3))+
           scale_size_continuous(range = c(0, 20)) +
@@ -1024,32 +1034,32 @@ server <- function(input, output, session) {
     
         
         vpr_sel_bin <- vpr_depth_bin %>%
-          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-          dplyr::filter(., avg_hr > min(input$hr_range))
+          dplyr::filter(., time_hr < max(input$hr_range)) %>%
+          dplyr::filter(., time_hr > min(input$hr_range))
 
         sel_dat <- all_dat %>%
-          dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
-          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-          dplyr::filter(., avg_hr > min(input$hr_range))
+          dplyr::mutate(., time_hr = time_hr - min(time_hr)) %>%
+          dplyr::filter(., time_hr < max(input$hr_range)) %>%
+          dplyr::filter(., time_hr > min(input$hr_range))
         
         ctd_bin <- ctd_bin() %>%
-             dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-             dplyr::filter(., avg_hr > min(input$hr_range))
+             dplyr::filter(., time_hr < max(input$hr_range)) %>%
+             dplyr::filter(., time_hr > min(input$hr_range))
         
         validate(
-          need(length(vpr_sel_bin$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
+          need(length(vpr_sel_bin$time_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
         )
         
         #interpolate data
         # vpr_int <- akima::interp(x = vpr_sel_bin$avg_hr, y = vpr_sel_bin$depth, z = vpr_sel_bin$temperature, duplicate= 'strip')
-        ctd_int <- interp::interp(x = ctd_bin$avg_hr, y = ctd_bin$depth , z = ctd_bin$temperature, duplicate = 'strip')
+        ctd_int <- interp::interp(x = ctd_bin$time_hr, y = ctd_bin$depth , z = ctd_bin$temperature, duplicate = 'strip')
         
         #set consistent x and y limits
         y_limits <- rev(range(ctd_int$y))
         x_limits <- range(input$hr_range)
         
-        if(max(x_limits) > max(ctd_bin$avg_hr)){
-          x_limits[2] <- max(ctd_bin$avg_hr)
+        if(max(x_limits) > max(ctd_bin$time_hr)){
+          x_limits[2] <- max(ctd_bin$time_hr)
         }
         cmpalf <- cmocean::cmocean('thermal')
         cmo_data <- cmpalf(100)
@@ -1075,9 +1085,9 @@ server <- function(input, output, session) {
           geom_contour(aes(x = x, y = y, z = z), col = "black") +
           geom_text_contour(aes(x = x, y = y, z = z), col = 'white', check_overlap = TRUE, size = 8)+
           scale_fill_gradientn(colours = cmo_data, na.value = 'gray')+
-          geom_line(data = ctd_bin, aes(x = avg_hr , y = depth), col = 'snow4', inherit.aes = FALSE) +
-          geom_point(data = taxa_dat, aes(x = avg_hr, y = (min_depth+max_depth)/2, size = conc_m3), pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
-          geom_point(data = taxa_dat_zero, aes(x = avg_hr, y = min_depth), pch = 7, colour = 'gray', alpha = 0.7) +
+          geom_line(data = ctd_bin, aes(x = time_hr , y = depth), col = 'snow4', inherit.aes = FALSE) +
+          geom_point(data = taxa_dat, aes(x = time_hr, y = (min_depth+max_depth)/2, size = conc_m3), pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
+          geom_point(data = taxa_dat_zero, aes(x = time_hr, y = min_depth), pch = 7, colour = 'gray', alpha = 0.7) +
           ggtitle("Concentration over Temperature" ) +
           labs(size = expression("Concentration /m" ^3), fill = expression(paste(degree,"C")))+
           scale_size_continuous(range = c(0, 20)) +
@@ -1124,32 +1134,32 @@ server <- function(input, output, session) {
       
         
         vpr_sel_bin <- vpr_depth_bin %>%
-          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-          dplyr::filter(., avg_hr > min(input$hr_range))
+          dplyr::filter(., time_hr < max(input$hr_range)) %>%
+          dplyr::filter(., time_hr > min(input$hr_range))
         
         sel_dat <- all_dat %>%
-          dplyr::mutate(., avg_hr = avg_hr - min(avg_hr)) %>%
-          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-          dplyr::filter(., avg_hr > min(input$hr_range))
+          dplyr::mutate(., time_hr = time_hr - min(time_hr)) %>%
+          dplyr::filter(., time_hr < max(input$hr_range)) %>%
+          dplyr::filter(., time_hr > min(input$hr_range))
         
         ctd_bin <- ctd_bin() %>%
-          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-          dplyr::filter(., avg_hr > min(input$hr_range))
+          dplyr::filter(., time_hr < max(input$hr_range)) %>%
+          dplyr::filter(., time_hr > min(input$hr_range))
         
         
         validate(
-          need(length(vpr_sel_bin$avg_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
+          need(length(vpr_sel_bin$time_hr) > 10, "Too few valid data points in selected QC range! Please expand!")
         )
         
-        # vpr_int <- akima::interp(x = vpr_sel_bin$avg_hr, y = vpr_sel_bin$depth, z = vpr_sel_bin$salinity, duplicate = 'strip')
-        ctd_int <- interp::interp(x = ctd_bin$avg_hr, y = ctd_bin$depth , z = ctd_bin$salinity, duplicate = 'strip')
+        # vpr_int <- akima::interp(x = vpr_sel_bin$time_hr, y = vpr_sel_bin$depth, z = vpr_sel_bin$salinity, duplicate = 'strip')
+        ctd_int <- interp::interp(x = ctd_bin$time_hr, y = ctd_bin$depth , z = ctd_bin$salinity, duplicate = 'strip')
         
         #set consistent x and y limits
         y_limits <- rev(range(ctd_int$y))
         x_limits <- range(input$hr_range)
         
-        if(max(x_limits) > max(ctd_bin$avg_hr)){
-          x_limits[2] <- max(ctd_bin$avg_hr)
+        if(max(x_limits) > max(ctd_bin$time_hr)){
+          x_limits[2] <- max(ctd_bin$time_hr)
         }
         
         cmpalf <- cmocean::cmocean('haline')
@@ -1176,9 +1186,9 @@ server <- function(input, output, session) {
           geom_contour(aes(x = x, y = y, z = z), col = "black") +
           geom_text_contour(aes(x = x, y = y, z = z), col = 'white', check_overlap = TRUE, size = 8)+
           scale_fill_gradientn(colours = cmo_data, na.value = 'gray')+
-          geom_line(data = ctd_bin, aes(x = avg_hr, y = depth), col = 'snow4', inherit.aes = FALSE) +
-          geom_point(data = taxa_dat, aes(x = avg_hr, y = (min_depth+max_depth)/2, size = conc_m3), pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
-          geom_point(data = taxa_dat_zero, aes(x = avg_hr, y = min_depth), pch = 7, colour = 'gray', alpha = 0.7) +
+          geom_line(data = ctd_bin, aes(x = time_hr, y = depth), col = 'snow4', inherit.aes = FALSE) +
+          geom_point(data = taxa_dat, aes(x = time_hr, y = (min_depth+max_depth)/2, size = conc_m3), pch = 21, alpha = 0.5, fill = 'black', colour = 'white')+
+          geom_point(data = taxa_dat_zero, aes(x = time_hr, y = min_depth), pch = 7, colour = 'gray', alpha = 0.7) +
           ggtitle("Concentration over Salinity" ) +
           labs(size = expression("Concentration /m" ^3), fill = "PSU")+
           scale_size_continuous(range = c(0, 20)) +
@@ -1201,16 +1211,16 @@ server <- function(input, output, session) {
         #                #add annotations
         #                plot.axes = {
         #                  #add bubbles
-        #                  points(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, pch = ".")
+        #                  points(vpr_sel_bin$time_hr, vpr_sel_bin$depth, pch = ".")
         #                  #add vpr path
-        #                  points(sel_dat$avg_hr - min(sel_dat$avg_hr), sel_dat$depth, type = 'l')
+        #                  points(sel_dat$time_hr - min(sel_dat$time_hr), sel_dat$depth, type = 'l')
         #                  #add axes
         #                  axis(1)
         #                  axis(2)
         #                  #add contour lines
         #                  contour(vpr_int$x, vpr_int$y, vpr_int$z, nlevels=10, add = T)
         #                  #enlarge bubbles based on concentration
-        #                  symbols(vpr_sel_bin$avg_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
+        #                  symbols(vpr_sel_bin$time_hr, vpr_sel_bin$depth, circles = vpr_sel_bin$conc_m3, 
         #                          fg = "darkgrey", bg = "black", inches = 0.3, add = T)
         #                }) 
       })
@@ -1221,8 +1231,8 @@ server <- function(input, output, session) {
       isolate({
         dat <- binnedData()
         dat_f <- dat %>%
-          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-          dplyr::filter(., avg_hr > min(input$hr_range))
+          dplyr::filter(., time_hr < max(input$hr_range)) %>%
+          dplyr::filter(., time_hr > min(input$hr_range))
         vpr_plot_TS(x = dat_f, var = "conc_m3") +
           theme(legend.key.size = unit(0.8, 'cm'),
                 axis.title = element_text(size = 20),
@@ -1240,10 +1250,10 @@ server <- function(input, output, session) {
       isolate({
         dat <- binnedData()
         dat_f <- dat %>%
-          dplyr::filter(., avg_hr < max(input$hr_range)) %>%
-          dplyr::filter(., avg_hr > min(input$hr_range))
+          dplyr::filter(., time_hr < max(input$hr_range)) %>%
+          dplyr::filter(., time_hr > min(input$hr_range))
         ggplot(dat_f) +
-          geom_point(aes(x = avg_hr, y = depth, col = towyo), size = 4) +
+          geom_point(aes(x = time_hr, y = depth, col = towyo), size = 4) +
           scale_y_reverse(name = 'Depth [m]') +
           scale_x_continuous(name = 'Time [hr]')+
           scale_color_discrete(name = 'Cast Identifier') +
