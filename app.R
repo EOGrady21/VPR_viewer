@@ -695,9 +695,14 @@ server <- function(input, output, session) {
         #format as table to get frequency
         roi_table <- as.data.frame(table(rois))
         
+        roi_table <- roi_table %>%
+          dplyr::rename(., time_ms = rois) %>%
+          dplyr::rename(., n_roi = Freq) %>%
+          dplyr::mutate(., time_ms = as.numeric(as.character(time_ms)))
+        
         #subset ctd and roi data where time/roi identifier match
         ctd_sub <- which(ctd_dat$time_ms %in% rois)
-        roi_sub <- which(rois %in% ctd_dat$time_ms)
+        
         #subset data individually
         ctd_dat_sub <- ctd_dat[ctd_sub,]
         
@@ -706,21 +711,10 @@ server <- function(input, output, session) {
           need(length(ctd_dat_sub[[1]]) != 0, 'No ROIs found for CTD data! Please verify metadata!')
         )
         
-        #EC & KS fix 2019/08/08 due to error producing NA roi numbers
-        roi_dat_sub <- rois[!duplicated(rois)]
-        #roi_dat_sub <- rois[ctd_sub] # overwriting bug fix? EOG 3/3/22
-        
-        #combine roi and ctd data
         all_dat <- ctd_dat_sub %>%
-            dplyr::mutate(., roi = roi_dat_sub) %>%
-            dplyr::mutate(., n_roi = roi_table$Freq) #add n_roi (count of rois per second)
-        
-        #add  time(hr) to combined data frame
-        all_dat <- all_dat %>%
-            dplyr::mutate(., time_hr = time_ms/3.6e+06) #%>%
-             #dplyr::mutate(., avg_hr = avg_hr - min(avg_hr))
+          dplyr::full_join(., roi_table) %>%
+          dplyr::mutate(., time_hr = time_ms/3.6e+06)
           
-        
         all_dat <- all_dat %>% #filter data based on parameter ranges 
             dplyr::filter(., salinity > min(input$sal_range)) %>%
             dplyr::filter(., salinity < max(input$sal_range)) %>%
