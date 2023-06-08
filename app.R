@@ -18,7 +18,9 @@ dark <-  bs_theme(bootswatch = 'superhero', version = '5')
 
 # Cache ----
 # shinyOptions(cache = cachem::cache_disk(file.path(dirname(tempdir()), "vprv-cache")))
-             
+          
+options(shiny.maxRequestSize=10*1024^2) #increase maximum file size to 10 MB
+   
 # UI -------------------------------------------------------------------------------------------
 {ui <- fluidPage(
   waiter::use_waiter(),
